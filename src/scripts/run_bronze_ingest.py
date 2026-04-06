@@ -61,7 +61,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--target", type=Path, default=Path("data/bronze"))
     parser.add_argument("--header-skip", type=int, default=0)
     parser.add_argument("--airbyte-enabled", action="store_true")
-    parser.add_argument("--prefer-delta", action="store_true")
+    parser.add_argument("--parquet-only", action="store_true")
     parser.add_argument("--run-id", type=str, default="")
     return parser
 
@@ -69,6 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     args = build_parser().parse_args()
     run_id = args.run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    prefer_delta = not args.parquet_only
 
     audit_path = args.target / "audit"
     churn_path = args.target / "churn"
@@ -126,12 +127,12 @@ def main() -> None:
         billing_df = spark.createDataFrame(billing_pdf).withColumn("ingestion_run_id", F.lit(run_id)).withColumn(
             "ingested_at_utc", F.current_timestamp()
         )
-        billing_format = _spark_write_append(billing_df, billing_path, prefer_delta=args.prefer_delta)
+        billing_format = _spark_write_append(billing_df, billing_path, prefer_delta=prefer_delta)
         billing_count = billing_df.count()
         billing_ingested = True
 
-    churn_format = _spark_write_append(churn_df, churn_path, prefer_delta=args.prefer_delta)
-    promotions_format = _spark_write_append(promotions_df, promotions_path, prefer_delta=args.prefer_delta)
+    churn_format = _spark_write_append(churn_df, churn_path, prefer_delta=prefer_delta)
+    promotions_format = _spark_write_append(promotions_df, promotions_path, prefer_delta=prefer_delta)
 
     record = {
         "run_id": run_id,

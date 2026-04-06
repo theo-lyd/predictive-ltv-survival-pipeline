@@ -34,8 +34,12 @@ Expected outputs:
 # Optional parameters
 /workspaces/predictive-ltv-survival-pipeline/.venv/bin/python src/scripts/run_bronze_ingest.py \
   --header-skip 2 \
+  --airbyte-enabled
+
+# Force parquet when Delta runtime is unavailable
+/workspaces/predictive-ltv-survival-pipeline/.venv/bin/python src/scripts/run_bronze_ingest.py \
   --airbyte-enabled \
-  --prefer-delta
+  --parquet-only
 ```
 
 Expected outputs:
