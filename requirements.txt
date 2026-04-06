@@ -1,11 +1,28 @@
-dbt-databricks
-databricks-cli
-pyspark==3.5.1
-great-expectations
-pandas
-numpy
-faker
-streamlit
-plotly
-scikit-learn
-lifelines
+# Core analytics and data tools
+pandas>=2.0.0,<3.0.0
+numpy>=1.24.0,<2.0.0
+faker>=18.0.0
+
+# Data quality and validation
+great-expectations>=0.18.0
+
+# Transformation and modeling
+dbt-core>=1.7.0,<2.0.0
+dbt-databricks>=1.7.0,<2.0.0
+
+# ML and statistical analysis
+scikit-learn>=1.3.0
+lifelines>=0.28.0
+
+# Visualization
+streamlit>=1.28.0
+plotly>=5.14.0
+
+# Cloud and execution
+pyspark>=3.5.0,<4.0.0
+databricks-cli>=0.17.0
+
+# Code quality (optional, installed during post-create if available)
+# pylint>=2.17.0
+# black>=23.0.0
+# flake8>=6.0.0
