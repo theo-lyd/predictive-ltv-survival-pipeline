@@ -9,17 +9,17 @@ predictive_ltv_survival_pipeline:
       type: databricks
       catalog: main
       schema: predictive_ltv_dev
-      host: "{{ env_var('DATABRICKS_HOST') }}"
-      http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
-      token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      host: "{{ env_var('DATABRICKS_HOST', 'https://example.databricks.com') }}"
+      http_path: "{{ env_var('DATABRICKS_HTTP_PATH', '/sql/protocolv1/o/0/0000000000000000') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN', 'dapi-placeholder-token') }}"
       threads: 4
       timeout_seconds: 300
     prod:
       type: databricks
       catalog: main
       schema: predictive_ltv_prod
-      host: "{{ env_var('DATABRICKS_HOST') }}"
-      http_path: "{{ env_var('DATABRICKS_HTTP_PATH') }}"
-      token: "{{ env_var('DATABRICKS_TOKEN') }}"
+      host: "{{ env_var('DATABRICKS_HOST', 'https://example.databricks.com') }}"
+      http_path: "{{ env_var('DATABRICKS_HTTP_PATH', '/sql/protocolv1/o/0/0000000000000000') }}"
+      token: "{{ env_var('DATABRICKS_TOKEN', 'dapi-placeholder-token') }}"
       threads: 8
       timeout_seconds: 300

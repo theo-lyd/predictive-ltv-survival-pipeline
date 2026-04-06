@@ -1,0 +1,5 @@
+{
+  "python.defaultInterpreterPath": "/workspaces/predictive-ltv-survival-pipeline/.venv/bin/python",
+  "dbt.dbtPath": "/workspaces/predictive-ltv-survival-pipeline/.venv/bin/dbt",
+  "dbt.profilesDir": "/home/vscode/.dbt"
+}
