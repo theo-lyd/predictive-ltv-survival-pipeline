@@ -1,0 +1,29 @@
+{
+  "name": "billing-sync-to-bronze",
+  "enabled": false,
+  "notes": "Enable after source and destination connectors are configured in Airbyte workspace.",
+  "source": {
+    "type": "file",
+    "format": "csv",
+    "path": "data/raw/billing/billing_sync.csv"
+  },
+  "destination": {
+    "type": "filesystem",
+    "format": "csv",
+    "path": "data/raw/billing"
+  },
+  "sync": {
+    "mode": "append",
+    "primary_key": [
+      "invoice_id"
+    ],
+    "cursor_field": "invoice_date",
+    "schedule": "manual"
+  },
+  "bronze_ingestion": {
+    "script": "src/scripts/run_bronze_ingest.py",
+    "args": [
+      "--airbyte-enabled"
+    ]
+  }
+}

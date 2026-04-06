@@ -4,7 +4,9 @@ sources:
   - name: raw
     description: Raw source tables ingested into the Bronze layer.
     tables:
-      - name: customers
-        description: Base customer subscription records.
+      - name: churn
+        description: Baseline telecom churn records loaded append-only.
       - name: promotions
         description: Promotion and discount records linked to customers.
+      - name: billing
+        description: Billing sync records from Airbyte (when enabled).

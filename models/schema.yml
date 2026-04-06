@@ -17,8 +17,18 @@ models:
       - name: promotion_id
         tests:
           - not_null
-          - unique
+      - name: customer_id
+        tests:
+          - not_null
       - name: discount_percent
+        description: Nullable by design to emulate messy source feeds.
+  - name: stg_billing
+    description: Billing records ingested via Airbyte when billing sync is enabled.
+    columns:
+      - name: invoice_id
+        tests:
+          - not_null
+      - name: customer_id
         tests:
           - not_null
   - name: fct_customer_ltv

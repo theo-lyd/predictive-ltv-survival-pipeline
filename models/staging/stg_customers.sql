@@ -7,7 +7,7 @@ with source as (
         region,
         product_tier,
         monthly_recurring_revenue
-    from {{ source('raw', 'customers') }}
+    from {{ source('raw', 'churn') }}
 )
 
 select
