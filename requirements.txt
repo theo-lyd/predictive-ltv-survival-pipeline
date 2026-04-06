@@ -1,0 +1,12 @@
+dbt-databricks
+databricks-cli
+pyspark==3.5.1
+great-expectations
+pandas
+numpy
+faker
+streamlit
+plotly
+apache-airflow
+scikit-learn
+lifelines

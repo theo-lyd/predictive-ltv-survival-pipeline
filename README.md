@@ -13,3 +13,5 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 9. [Beginner Walkthrough](docs/09_beginner_walkthrough.md)
 10. [Seminar and Thesis Defense Brief](docs/10_seminar_and_thesis_defense_brief.md)
 11. [Interview Questions and Answers](docs/11_interview_questions_and_answers.md)
+12. [Implementation Scaffold Report](docs/12_implementation_scaffold_report.md)
+13. [Implementation Command Log](docs/13_implementation_command_log.md)

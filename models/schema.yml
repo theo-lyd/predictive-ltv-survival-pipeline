@@ -1,0 +1,25 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: Cleaned customer subscription staging model.
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+      - name: monthly_recurring_revenue
+        tests:
+          - not_null
+  - name: stg_promotions
+    description: Cleaned promotion staging model.
+    columns:
+      - name: promotion_id
+        tests:
+          - not_null
+          - unique
+      - name: discount_percent
+        tests:
+          - not_null
+  - name: fct_customer_ltv
+    description: Final customer-level LTV fact table.
