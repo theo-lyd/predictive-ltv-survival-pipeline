@@ -178,6 +178,45 @@ chmod +x scripts/bootstrap.sh
 bash scripts/bootstrap.sh
 ```
 
+### VS Code dbt extension shows "dbt not found" or "profile not found"
+
+**Issue**: dbt Power User diagnostics show one or more of:
+- `dbt configuration is invalid : dbt not found`
+- `Could not find profile named 'predictive_ltv_survival_pipeline'`
+- `Env var required but not provided: 'DATABRICKS_HOST'`
+
+**Root cause**: VS Code extension process is not using the same Python/dbt/profile context as your terminal.
+
+**Fix checklist**:
+1. Ensure the interpreter is the repo venv:
+   - Command Palette -> `Python: Select Interpreter`
+   - Select `/workspaces/predictive-ltv-survival-pipeline/.venv/bin/python`
+2. Ensure workspace settings exist in `.vscode/settings.json`:
+```json
+{
+  "dbt.dbtIntegration": "core",
+  "dbt.dbtPythonPathOverride": "/workspaces/predictive-ltv-survival-pipeline/.venv/bin/python",
+  "terminal.integrated.env.linux": {
+    "DBT_PROFILES_DIR": "${workspaceFolder}"
+  }
+}
+```
+3. Ensure a profile file exists in the project root:
+```bash
+cp profiles.yml.example profiles.yml
+```
+4. Reload VS Code window:
+   - Command Palette -> `Developer: Reload Window`
+5. If warnings persist, clear extension cache:
+   - Command Palette -> `dbt Power User: Clear Manifest Cache`
+
+**Verification**:
+```bash
+DBT_PROFILES_DIR=/workspaces/predictive-ltv-survival-pipeline \
+  /workspaces/predictive-ltv-survival-pipeline/.venv/bin/dbt parse --project-dir .
+```
+Expected: parse succeeds (warnings are acceptable), no profile/binary errors.
+
 ## Environment Variables
 
 The following environment variables are required:
