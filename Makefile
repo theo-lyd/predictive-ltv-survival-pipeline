@@ -1,4 +1,4 @@
-.PHONY: help install install-dev lint format test clean bootstrap validate
+.PHONY: help install install-dev lint format test clean bootstrap validate phase1-generate phase1-ingest
 
 help:
 	@echo "Available commands:"
@@ -11,6 +11,8 @@ help:
 	@echo "  make bootstrap         - Run project bootstrap"
 	@echo "  make validate          - Validate environment setup"
 	@echo "  make dbt-debug         - Test dbt connection"
+	@echo "  make phase1-generate   - Generate synthetic promotions payloads"
+	@echo "  make phase1-ingest     - Ingest raw churn/promotions/billing into Bronze"
 
 install:
 	python -m pip install --upgrade pip
@@ -46,5 +48,11 @@ validate:
 
 dbt-debug:
 	dbt debug --project-dir . --profiles-dir ~/.dbt
+
+phase1-generate:
+	/workspaces/predictive-ltv-survival-pipeline/.venv/bin/python src/scripts/generate_synthetic_metadata.py --row-count 1000 --seed 42
+
+phase1-ingest:
+	/workspaces/predictive-ltv-survival-pipeline/.venv/bin/python src/scripts/run_bronze_ingest.py --airbyte-enabled
 
 .DEFAULT_GOAL := help

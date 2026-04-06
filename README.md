@@ -26,3 +26,7 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 - [Phase 0 Batch Completion Summary](docs/PHASE_0_BATCH_COMPLETION_SUMMARY.md) - Complete record of all 5 batches, issues resolved, validation results
 - [Phase 0 Command Log](docs/PHASE_0_COMMAND_LOG.md) - Git, bash, pytest, dbt commands with examples
 - [Phase 0 Acceptance Criteria](docs/PHASE_0_ACCEPTANCE_CRITERIA.md) - Go/no-go checklist for infrastructure completion
+
+### Phase 1: Ingestion & Bronze Documentation
+- [Phase 1 Implementation Report](docs/PHASE_1_IMPLEMENTATION_REPORT.md) - Batch-by-batch implementation with methodology and package rationale
+- [Phase 1 Command Log](docs/PHASE_1_COMMAND_LOG.md) - End-to-end generation, ingestion, and validation commands
