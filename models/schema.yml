@@ -11,6 +11,9 @@ models:
       - name: monthly_recurring_revenue
         tests:
           - not_null
+      - name: signup_ts
+        tests:
+          - not_null
   - name: stg_promotions
     description: Cleaned promotion staging model.
     columns:
@@ -18,6 +21,9 @@ models:
         tests:
           - not_null
       - name: customer_id
+        tests:
+          - not_null
+      - name: promotion_identity_key
         tests:
           - not_null
       - name: discount_percent
@@ -29,6 +35,49 @@ models:
         tests:
           - not_null
       - name: customer_id
+        tests:
+          - not_null
+      - name: invoice_amount
+        tests:
+          - not_null
+  - name: int_promotions_resolved
+    description: Deterministically resolved promotion entities after deduplication and stitching.
+    columns:
+      - name: promotion_surrogate_key
+        tests:
+          - not_null
+          - unique
+      - name: promotion_identity_key
+        tests:
+          - not_null
+  - name: int_discount_cohorts
+    description: Promotion-derived cohort segmentation by discount and tenure.
+    columns:
+      - name: discount_cohort
+        tests:
+          - not_null
+      - name: tenure_cohort
+        tests:
+          - not_null
+  - name: int_customer_state_transitions
+    description: Customer lifecycle transition states reconciled with promotions and billing.
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+      - name: state_transition
+        tests:
+          - not_null
+  - name: int_silver_bronze_reconciliation
+    description: Aggregate-level reconciliation between Bronze and Silver metrics.
+    columns:
+      - name: entity_name
+        tests:
+          - not_null
+      - name: count_delta_ratio
+        tests:
+          - not_null
+      - name: mrr_delta_ratio
         tests:
           - not_null
   - name: fct_customer_ltv
