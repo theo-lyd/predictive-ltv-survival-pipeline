@@ -1,5 +1,5 @@
 name: predictive_ltv_survival_pipeline
-version: 1.0.0
+version: 0.1.0
 config-version: 2
 
 profile: predictive_ltv_survival_pipeline
@@ -15,10 +15,15 @@ target-path: "target"
 clean-targets:
   - "target"
   - "dbt_packages"
+logs-path: "logs"
+
+require-dbt-version: [">=1.7.0", "<2.0.0"]
 
 models:
   predictive_ltv_survival_pipeline:
     staging:
       +materialized: view
+      +schema: stg
     marts:
       +materialized: table
+      +schema: marts
