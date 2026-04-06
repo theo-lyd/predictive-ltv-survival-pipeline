@@ -205,3 +205,30 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# dbt
+target/
+dbt_packages/
+dbt_project.yml.bak
+logs/
+.dbt-manifest.json
+
+# Data
+data/
+*.parquet
+*.parquet.bak
+*.csv
+*.xlsx
+*.xls
+*.feather
+
+# Airflow
+airflow/logs/
+airflow/dags/__pycache__/
+airflow.cfg
+
+# Environment/Secrets
+.env.local
+.env.*.local
+.databricks.cfg
+~/.dbt/profiles.yml
