@@ -19,6 +19,6 @@
       }
     }
   },
-  "postCreateCommand": "pip install -r requirements.txt",
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
   "remoteUser": "vscode"
 }

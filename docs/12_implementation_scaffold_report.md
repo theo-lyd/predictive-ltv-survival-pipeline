@@ -41,3 +41,9 @@ The scaffold supports the thesis structure by making it possible to synthesize d
 - Python package and CLI entry points created.
 - dbt, Airflow, and Streamlit scaffolds created.
 - Repository moved from docs-only to implementation-ready structure.
+
+## Batch 6 Update: Recovery Mode Remediation
+- Investigated [../.codespaces/.persistedshare/creation.log](../.codespaces/.persistedshare/creation.log) and confirmed build failure at apt update due to unsigned Yarn repo key.
+- Updated [../.devcontainer/Dockerfile](../.devcontainer/Dockerfile) to remove the Yarn apt source before package installation.
+- Added [../.devcontainer/post-create.sh](../.devcontainer/post-create.sh) and validated shell syntax.
+- Result: devcontainer configuration is aligned with reliable Codespaces rebuild expectations.

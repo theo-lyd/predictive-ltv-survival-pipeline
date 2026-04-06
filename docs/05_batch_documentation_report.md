@@ -59,3 +59,13 @@ The project is framed around the relationship between promotional intensity and 
 - 4 structured project documents created.
 - README navigation index added.
 - Repository documentation now supports technical, managerial, and thesis-oriented reading paths.
+
+## Batch 6: Codespace Recovery Mode Fix
+- What was done: investigated creation log failure and patched devcontainer build configuration.
+- How it was done: identified unsigned Yarn apt repo failure in container build; updated Dockerfile to remove the problematic apt source before `apt-get update`; added missing [../.devcontainer/post-create.sh](../.devcontainer/post-create.sh).
+- Problems/issues encountered: container build stopped with apt signature error (`NO_PUBKEY 62D54FD4003F6525`) from Yarn source.
+- Solution: remove `/etc/apt/sources.list.d/yarn.list` during image build, then continue package install.
+- Alternative approach: pin/import Yarn key during build; not preferred for this project because Yarn is not a required runtime dependency.
+- Technical report: the fix addresses the root build blocker and preserves required Java/Python setup for Spark/dbt tooling.
+- Theoretical report: reliability of research infrastructure is a prerequisite for reproducible analytics outcomes.
+- Output achieved: Codespaces can rebuild without failing at apt update due to third-party repo signature issues.

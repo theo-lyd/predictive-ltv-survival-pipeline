@@ -65,3 +65,6 @@ Synthetic bias, schema drift, metric inconsistency, and stakeholder misalignment
 
 ### 20. What is the simplest summary of the project?
 It is a governed analytics engine that shows whether discounting customers early helps or hurts long-term SaaS value.
+
+### 21. How did you handle a Codespaces container recovery-mode failure?
+I analyzed the creation log, identified an unsigned third-party Yarn apt source as the root cause, removed that source in the Docker build step, and added a validated post-create setup script to restore deterministic environment provisioning.

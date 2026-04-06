@@ -7,6 +7,5 @@ numpy
 faker
 streamlit
 plotly
-apache-airflow
 scikit-learn
 lifelines

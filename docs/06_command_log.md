@@ -28,3 +28,28 @@ This log records the commands used during the documentation and consolidation ba
 
 ## Notes
 Only repository inspection was required for this documentation batch. No build, notebook, Databricks, dbt, or Python execution was necessary.
+
+## Batch 6: Codespace Recovery Fix Commands
+
+### Git Commands
+- `git status --short`
+
+### Bash / Shell Commands
+- `chmod +x .devcontainer/post-create.sh`
+- `bash -n .devcontainer/post-create.sh`
+
+### Make Commands
+- None used.
+
+### Lint Commands
+- Shell syntax check executed via `bash -n`.
+
+### Databricks / Spark / PySpark Commands
+- None used.
+
+### dbt / SQL Commands
+- None used.
+
+### Python Commands
+- None executed directly in shell for this fix.
+

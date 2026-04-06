@@ -29,3 +29,28 @@
 
 ## Notes
 This batch added the implementation scaffold only. The actual runtime validation commands will be introduced after dependency installation and environment setup.
+
+## Batch 6 Commands (Codespace Recovery Fix)
+
+### Git Commands
+- `git status --short`
+
+### Bash / Shell Commands
+- `chmod +x .devcontainer/post-create.sh`
+- `bash -n .devcontainer/post-create.sh`
+
+### Make Commands
+- None used.
+
+### Lint Commands
+- `bash -n .devcontainer/post-create.sh`
+
+### Databricks / Spark / PySpark Commands
+- None used.
+
+### dbt / SQL Commands
+- None used.
+
+### Python Commands
+- None executed in shell for this fix.
+
