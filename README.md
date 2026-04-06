@@ -2,16 +2,27 @@
 An end-to-end Analytics Engineering system built on Databricks and dbt. Features automated data synthesis, Survival Analysis (Kaplan-Meier) via dbt-Python, and rigorous observability using Monte Carlo and Great Expectations to track the lifecycle of B2B subscription cohorts. #dbt #databricks #pyspark #unit-economics #survival-analysis #ltv #airflow
 
 ## Documentation Index
-1. [Project Brief](docs/01_project_brief.md)
-2. [Phase-by-Phase Implementation Plan](docs/02_phase_by_phase_implementation_plan.md)
-3. [Requirement Specification Document](docs/03_requirement_specification_document.md)
-4. [Business Blueprint for Managers](docs/04_business_blueprint_for_managers.md)
-5. [Batch Documentation Report](docs/05_batch_documentation_report.md)
-6. [Command Log](docs/06_command_log.md)
-7. [Master Thesis Report](docs/07_master_thesis_report.md)
+
+### Strategic Documents (Phase 0 Planning)
+1. [Project Brief](docs/01_project_brief.md) - Strategic thesis, objectives, scope, risks
+2. [Phase-by-Phase Implementation Plan](docs/02_phase_by_phase_implementation_plan.md) - Detailed phase breakdown with acceptance criteria
+3. [Requirement Specification Document](docs/03_requirement_specification_document.md) - Formal FR/NFR/BR/SR requirements
+4. [Business Blueprint for Managers](docs/04_business_blueprint_for_managers.md) - Non-technical strategic decision framework
+
+### Reference Documents
+5. [Batch Documentation Report Template](docs/05_batch_documentation_report.md)
+6. [Command Log Template](docs/06_command_log.md)
+7. [Master Thesis Report Template](docs/07_master_thesis_report.md)
 8. [Non-Technical Executive Report](docs/08_non_technical_executive_report.md)
 9. [Beginner Walkthrough](docs/09_beginner_walkthrough.md)
 10. [Seminar and Thesis Defense Brief](docs/10_seminar_and_thesis_defense_brief.md)
 11. [Interview Questions and Answers](docs/11_interview_questions_and_answers.md)
 12. [Implementation Scaffold Report](docs/12_implementation_scaffold_report.md)
 13. [Implementation Command Log](docs/13_implementation_command_log.md)
+
+### Phase 0: Environment & Infrastructure Documentation
+- [Environment Setup Guide](ENVIRONMENT_SETUP.md) - Step-by-step new contributor onboarding
+- [System Architecture](ARCHITECTURE.md) - High-level design, Medallion layers, technology stack
+- [Phase 0 Batch Completion Summary](docs/PHASE_0_BATCH_COMPLETION_SUMMARY.md) - Complete record of all 5 batches, issues resolved, validation results
+- [Phase 0 Command Log](docs/PHASE_0_COMMAND_LOG.md) - Git, bash, pytest, dbt commands with examples
+- [Phase 0 Acceptance Criteria](docs/PHASE_0_ACCEPTANCE_CRITERIA.md) - Go/no-go checklist for infrastructure completion
