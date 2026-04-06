@@ -212,6 +212,7 @@ dbt_packages/
 dbt_project.yml.bak
 logs/
 .dbt-manifest.json
+.user.yml
 
 # Data
 data/

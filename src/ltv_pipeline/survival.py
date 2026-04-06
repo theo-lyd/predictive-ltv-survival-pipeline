@@ -13,7 +13,9 @@ class SurvivalCurveResult:
     summary: pd.DataFrame
 
 
-def build_kaplan_meier_summary(frame: pd.DataFrame, duration_col: str, event_col: str, cohort_name: str) -> SurvivalCurveResult:
+def build_kaplan_meier_summary(
+    frame: pd.DataFrame, duration_col: str, event_col: str, cohort_name: str
+) -> SurvivalCurveResult:
     """Return a lightweight survival summary placeholder.
 
     The full Kaplan-Meier implementation can be swapped in later using lifelines.

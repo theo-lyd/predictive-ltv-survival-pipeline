@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
@@ -17,10 +17,20 @@ from ltv_pipeline.synthetic import (
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Generate synthetic promotion metadata for the thesis scaffold")
-    parser.add_argument("--parquet-output", type=Path, default=Path("data/raw/promotions/promotions.parquet"))
-    parser.add_argument("--xml-output", type=Path, default=Path("data/raw/promotions/promotions.xml"))
-    parser.add_argument("--report-output", type=Path, default=Path("data/bronze/audit/synthetic_reproducibility.json"))
+    parser = argparse.ArgumentParser(
+        description="Generate synthetic promotion metadata for the thesis scaffold"
+    )
+    parser.add_argument(
+        "--parquet-output", type=Path, default=Path("data/raw/promotions/promotions.parquet")
+    )
+    parser.add_argument(
+        "--xml-output", type=Path, default=Path("data/raw/promotions/promotions.xml")
+    )
+    parser.add_argument(
+        "--report-output",
+        type=Path,
+        default=Path("data/bronze/audit/synthetic_reproducibility.json"),
+    )
     parser.add_argument("--row-count", type=int, default=1000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--discount-cap", type=int, default=50)

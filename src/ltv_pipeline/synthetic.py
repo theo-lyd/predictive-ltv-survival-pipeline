@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
 import json
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable
 from xml.etree.ElementTree import Element, SubElement, tostring
@@ -26,7 +26,11 @@ def _promotion_date_with_format_noise(index: int, date_value: str) -> str:
     """Emit mixed date formats to emulate heterogeneous source systems."""
 
     if index % 4 == 0:
-        day, month, year = date_value.split("-")[2], date_value.split("-")[1], date_value.split("-")[0]
+        day, month, year = (
+            date_value.split("-")[2],
+            date_value.split("-")[1],
+            date_value.split("-")[0],
+        )
         return f"{day}/{month}/{year}"
     if index % 9 == 0:
         return date_value.replace("-", "/")
@@ -41,7 +45,9 @@ def _discount_bucket(tenure_months: float, rng: np.random.Generator, cap: int) -
     return "Loyalty", float(rng.uniform(5, 10))
 
 
-def generate_promotion_frame(customer_ids: Iterable[str], config: SyntheticPromotionConfig | None = None) -> pd.DataFrame:
+def generate_promotion_frame(
+    customer_ids: Iterable[str], config: SyntheticPromotionConfig | None = None
+) -> pd.DataFrame:
     """Build a promotion dimension with intentionally imperfect records."""
 
     config = config or SyntheticPromotionConfig()
@@ -58,8 +64,12 @@ def generate_promotion_frame(customer_ids: Iterable[str], config: SyntheticPromo
     tenures = rng.normal(loc=14, scale=8, size=sample_size).clip(min=0)
 
     rows = []
-    for index, (customer_id, tenure_months) in enumerate(zip(sampled_ids, tenures, strict=True), start=1):
-        discount_type, discount_percent = _discount_bucket(float(tenure_months), rng, config.discount_cap)
+    for index, (customer_id, tenure_months) in enumerate(
+        zip(sampled_ids, tenures, strict=True), start=1
+    ):
+        discount_type, discount_percent = _discount_bucket(
+            float(tenure_months), rng, config.discount_cap
+        )
         if index % config.null_every_n == 0:
             discount_percent = np.nan
         promotion_date = fake.date_this_decade().strftime("%Y-%m-%d")
@@ -69,7 +79,9 @@ def generate_promotion_frame(customer_ids: Iterable[str], config: SyntheticPromo
                 "customer_id": customer_id,
                 "tenure_months": round(float(tenure_months), 2),
                 "discount_type": discount_type,
-                "discount_percent": round(float(discount_percent), 2) if pd.notna(discount_percent) else None,
+                "discount_percent": (
+                    round(float(discount_percent), 2) if pd.notna(discount_percent) else None
+                ),
                 "promotion_start_date": _promotion_date_with_format_noise(index, promotion_date),
                 "promotion_channel": rng.choice(["email", "sales", "partner", "web"]),
                 "source_system": "synthetic",
@@ -84,7 +96,11 @@ def generate_promotion_frame(customer_ids: Iterable[str], config: SyntheticPromo
     return frame
 
 
-def write_promotion_payload(output_path: str | Path, customer_ids: Iterable[str], config: SyntheticPromotionConfig | None = None) -> Path:
+def write_promotion_payload(
+    output_path: str | Path,
+    customer_ids: Iterable[str],
+    config: SyntheticPromotionConfig | None = None,
+) -> Path:
     """Persist the synthetic promotion dataset as a Parquet file."""
 
     output_path = Path(output_path)

@@ -1,17 +1,17 @@
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pandas as pd
 
 sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
 
+from ltv_pipeline.ingestion import normalize_numeric_abbrev
 from ltv_pipeline.synthetic import (
     SyntheticPromotionConfig,
     generate_promotion_frame,
     write_promotion_xml,
     write_reproducibility_report,
 )
-from ltv_pipeline.ingestion import normalize_numeric_abbrev
 
 
 def test_numeric_normalization():
@@ -42,7 +42,9 @@ def test_xml_and_reproducibility_outputs(tmp_path: Path):
     frame = generate_promotion_frame(customer_ids=customer_ids, config=config)
 
     xml_path = write_promotion_xml(tmp_path / "promotions.xml", frame)
-    report_path = write_reproducibility_report(tmp_path / "synthetic_report.json", config, row_count=len(frame))
+    report_path = write_reproducibility_report(
+        tmp_path / "synthetic_report.json", config, row_count=len(frame)
+    )
 
     assert xml_path.exists()
     assert report_path.exists()

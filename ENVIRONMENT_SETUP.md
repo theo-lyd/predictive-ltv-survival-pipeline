@@ -76,6 +76,12 @@ export DATABRICKS_HTTP_PATH="/sql/1.0/warehouses/your-warehouse-id"
 export DATABRICKS_TOKEN="dbapinnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn"
 ```
 
+Tip: you can bootstrap from template:
+
+```bash
+cp .env.example .env.local
+```
+
 Then source it:
 
 ```bash

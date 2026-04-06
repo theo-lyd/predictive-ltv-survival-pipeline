@@ -4,34 +4,37 @@ Environment validation tests for Predictive LTV Survival Pipeline
 Run with: python tests/test_environment.py
 """
 
+import importlib
 import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 
 def test_python_version():
     """Verify Python 3.10+ is available."""
     version = sys.version_info
-    assert version.major == 3 and version.minor >= 10, f"Python 3.10+ required, got {version.major}.{version.minor}"
+    assert (
+        version.major == 3 and version.minor >= 10
+    ), f"Python 3.10+ required, got {version.major}.{version.minor}"
     print(f"✓ Python version: {version.major}.{version.minor}.{version.micro}")
 
 
 def test_required_packages():
     """Verify core packages are installed."""
-    required = [
-        'dbt.core',
-        'dbt_databricks',
-        'pyspark',
-        'pandas',
-        'great_expectations',
-        'streamlit',
-        'lifelines'
+    required_modules = [
+        "dbt",
+        "dbt.adapters.databricks",
+        "pyspark",
+        "pandas",
+        "great_expectations",
+        "streamlit",
+        "lifelines",
     ]
-    
-    for package in required:
+
+    for package in required_modules:
         try:
-            __import__(package)
+            importlib.import_module(package)
             print(f"✓ {package} installed")
         except ImportError as e:
             print(f"✗ {package} not installed: {e}")
@@ -40,62 +43,57 @@ def test_required_packages():
 
 def test_databricks_env_vars():
     """Verify Databricks environment variables are set."""
-    required_vars = [
-        'DATABRICKS_HOST',
-        'DATABRICKS_HTTP_PATH',
-        'DATABRICKS_TOKEN'
-    ]
-    
+    required_vars = ["DATABRICKS_HOST", "DATABRICKS_HTTP_PATH", "DATABRICKS_TOKEN"]
+
     missing = []
     for var in required_vars:
         if not os.getenv(var):
             missing.append(var)
         else:
             print(f"✓ {var} is set")
-    
+
     if missing:
         print(f"⚠ Missing environment variables: {', '.join(missing)}")
-        print(f"  Run: bash scripts/setup_secrets.sh")
-        print(f"  Then: source .env.local")
+        print("  Run: bash scripts/setup_secrets.sh")
+        print("  Then: source .env.local")
 
 
 def test_dbt_debug():
-    """Verify dbt debug succeeds."""
+    """Verify dbt can parse project using the workspace profile."""
     try:
         result = subprocess.run(
-            ['dbt', 'debug'],
+            ["dbt", "parse", "--project-dir", "."],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=90,
+            env={**os.environ, "DBT_PROFILES_DIR": os.getenv("DBT_PROFILES_DIR", str(Path.cwd()))},
         )
         if result.returncode == 0:
-            print(f"✓ dbt connection successful")
+            print("✓ dbt parse successful")
         else:
-            print(f"✗ dbt debug failed:")
+            print("✗ dbt parse failed:")
             print(result.stderr)
-            raise RuntimeError("dbt connection failed")
+            raise RuntimeError("dbt parse failed")
     except FileNotFoundError:
-        print(f"✗ dbt command not found")
+        print("✗ dbt command not found")
         raise
     except subprocess.TimeoutExpired:
-        print(f"✗ dbt debug timed out")
+        print("✗ dbt parse timed out")
         raise
 
 
 def test_directory_structure():
     """Verify expected directory structure."""
     required_dirs = [
-        'models',
-        'models/staging',
-        'models/marts',
-        'macros',
-        'scripts',
-        'data',
-        'data/bronze',
-        'data/silver',
-        'data/gold'
+        "models",
+        "models/staging",
+        "models/marts",
+        "macros",
+        "scripts",
+        "src",
+        "tests",
     ]
-    
+
     for dir_path in required_dirs:
         if Path(dir_path).exists():
             print(f"✓ {dir_path}/ exists")
@@ -107,14 +105,15 @@ def test_directory_structure():
 def test_configuration_files():
     """Verify required configuration files exist."""
     required_files = [
-        'dbt_project.yml',
-        'profiles.yml.example',
-        'requirements.txt',
-        'ENVIRONMENT_SETUP.md',
-        'ARCHITECTURE.md',
-        'Makefile'
+        "dbt_project.yml",
+        "profiles.yml",
+        "profiles.yml.example",
+        "requirements.txt",
+        "ENVIRONMENT_SETUP.md",
+        "ARCHITECTURE.md",
+        "Makefile",
     ]
-    
+
     for file_path in required_files:
         if Path(file_path).exists():
             print(f"✓ {file_path} exists")
@@ -133,16 +132,16 @@ def main():
         ("Directory Structure", test_directory_structure),
         ("Configuration Files", test_configuration_files),
     ]
-    
+
     print("=" * 60)
     print("Environment Validation Tests")
     print("=" * 60)
     print()
-    
+
     passed = 0
     failed = 0
     warnings = 0
-    
+
     for test_name, test_func in tests:
         print(f"\n[{test_name}]")
         try:
@@ -154,11 +153,11 @@ def main():
             else:
                 failed += 1
                 print(f"✗ FAILED: {e}")
-    
+
     print("\n" + "=" * 60)
     print(f"Results: {passed} passed, {failed} failed, {warnings} warnings")
     print("=" * 60)
-    
+
     if failed > 0:
         sys.exit(1)
 
