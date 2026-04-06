@@ -23,7 +23,5 @@ models:
   predictive_ltv_survival_pipeline:
     staging:
       +materialized: view
-      +schema: stg
     marts:
       +materialized: table
-      +schema: marts
