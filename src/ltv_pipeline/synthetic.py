@@ -1,10 +1,12 @@
-"""Synthetic promotion data generation for the thesis scaffold."""
+"""Synthetic promotion data generation for the ingestion pipeline."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+import json
 from pathlib import Path
 from typing import Iterable
+from xml.etree.ElementTree import Element, SubElement, tostring
 
 import numpy as np
 import pandas as pd
@@ -16,6 +18,19 @@ class SyntheticPromotionConfig:
     seed: int = 42
     discount_cap: int = 50
     row_count: int = 1000
+    null_every_n: int = 23
+    duplicate_rows: int = 1
+
+
+def _promotion_date_with_format_noise(index: int, date_value: str) -> str:
+    """Emit mixed date formats to emulate heterogeneous source systems."""
+
+    if index % 4 == 0:
+        day, month, year = date_value.split("-")[2], date_value.split("-")[1], date_value.split("-")[0]
+        return f"{day}/{month}/{year}"
+    if index % 9 == 0:
+        return date_value.replace("-", "/")
+    return date_value
 
 
 def _discount_bucket(tenure_months: float, rng: np.random.Generator, cap: int) -> tuple[str, float]:
@@ -45,9 +60,9 @@ def generate_promotion_frame(customer_ids: Iterable[str], config: SyntheticPromo
     rows = []
     for index, (customer_id, tenure_months) in enumerate(zip(sampled_ids, tenures, strict=True), start=1):
         discount_type, discount_percent = _discount_bucket(float(tenure_months), rng, config.discount_cap)
-        if index % 23 == 0:
+        if index % config.null_every_n == 0:
             discount_percent = np.nan
-        promotion_date = fake.date_this_decade()
+        promotion_date = fake.date_this_decade().strftime("%Y-%m-%d")
         rows.append(
             {
                 "promotion_id": f"PR-{index:06d}",
@@ -55,7 +70,7 @@ def generate_promotion_frame(customer_ids: Iterable[str], config: SyntheticPromo
                 "tenure_months": round(float(tenure_months), 2),
                 "discount_type": discount_type,
                 "discount_percent": round(float(discount_percent), 2) if pd.notna(discount_percent) else None,
-                "promotion_start_date": promotion_date.strftime("%Y-%m-%d") if index % 4 else promotion_date.strftime("%d/%m/%Y"),
+                "promotion_start_date": _promotion_date_with_format_noise(index, promotion_date),
                 "promotion_channel": rng.choice(["email", "sales", "partner", "web"]),
                 "source_system": "synthetic",
             }
@@ -63,17 +78,52 @@ def generate_promotion_frame(customer_ids: Iterable[str], config: SyntheticPromo
 
     frame = pd.DataFrame(rows)
 
-    if len(frame) > 3:
-        frame = pd.concat([frame, frame.iloc[[0]]], ignore_index=True)
+    if len(frame) > 3 and config.duplicate_rows > 0:
+        frame = pd.concat([frame, frame.iloc[: config.duplicate_rows]], ignore_index=True)
 
     return frame
 
 
 def write_promotion_payload(output_path: str | Path, customer_ids: Iterable[str], config: SyntheticPromotionConfig | None = None) -> Path:
-    """Persist the synthetic promotion dimension as a Parquet file."""
+    """Persist the synthetic promotion dataset as a Parquet file."""
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     frame = generate_promotion_frame(customer_ids=customer_ids, config=config)
     frame.to_parquet(output_path, index=False)
+    return output_path
+
+
+def write_promotion_xml(output_path: str | Path, frame: pd.DataFrame) -> Path:
+    """Persist promotion records as XML payload keyed by customer_id."""
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    root = Element("promotions")
+    for record in frame.to_dict(orient="records"):
+        node = SubElement(root, "promotion")
+        for key, value in record.items():
+            child = SubElement(node, key)
+            child.text = "" if pd.isna(value) else str(value)
+
+    output_path.write_text(tostring(root, encoding="unicode"), encoding="utf-8")
+    return output_path
+
+
+def write_reproducibility_report(
+    output_path: str | Path,
+    config: SyntheticPromotionConfig,
+    row_count: int,
+) -> Path:
+    """Write reproducibility metadata for audit and rerun traceability."""
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "generator": "ltv_pipeline.synthetic.generate_promotion_frame",
+        "config": asdict(config),
+        "generated_rows": row_count,
+    }
+    output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     return output_path
