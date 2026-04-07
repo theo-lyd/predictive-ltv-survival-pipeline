@@ -101,8 +101,14 @@ def run_silver_ge_checkpoint(data_root: Path, output_path: Path) -> dict:
         ).round(2)
         billing["invoice_total"] = pd.to_numeric(billing["invoice_total"], errors="coerce").round(2)
     else:
-        billing["expected_invoice_total"] = billing["invoice_amount"].round(2)
-        billing["invoice_total"] = billing["invoice_amount"].round(2)
+        missing_cols = {"invoice_subtotal", "discount_amount", "invoice_total"} - set(
+            billing.columns
+        )
+        raise ValueError(
+            f"Billing schema drift detected. Expected columns {missing_cols} are missing. "
+            f"Current columns: {list(billing.columns)}. "
+            f"Check Airbyte configuration and source system for schema changes."
+        )
 
     invoice_expectations = [
         ExpectColumnValuesToNotBeNull(column="invoice_amount"),

@@ -33,7 +33,7 @@ assembled as (
         f.discount_intensity_index,
         f.contributed_margin_monthly,
         f.acquisition_cost,
-        coalesce(c.churn_probability, 0.5) as churn_probability,
+        c.churn_probability,
         least(greatest(coalesce(f.customer_tenure_months, 1), 1), 36) as capped_tenure_months
     from features f
     left join churn_scores c on f.customer_id = c.customer_id

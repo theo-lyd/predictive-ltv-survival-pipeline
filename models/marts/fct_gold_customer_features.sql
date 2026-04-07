@@ -1,3 +1,5 @@
+{% set observation_date = var('observation_date', '2024-12-31') %}
+
 with customers as (
     select
         customer_id,
@@ -46,7 +48,7 @@ assembled as (
         coalesce(p.max_discount_percent, 0) as max_discount_percent,
         coalesce(p.avg_discount_percent, 0) as avg_discount_percent,
         least(greatest(coalesce(p.avg_discount_percent, 0) / 50.0, 0), 1) as discount_intensity_index,
-        greatest(months_between(coalesce(c.churn_ts, current_timestamp()), c.signup_ts), 0) as customer_tenure_months,
+        greatest(months_between(coalesce(c.churn_ts, to_timestamp('{{ observation_date }}', 'YYYY-MM-DD')), c.signup_ts), 0) as customer_tenure_months,
         coalesce(b.invoice_count, 0) as invoice_count,
         coalesce(b.invoice_total_amount, 0) as invoice_total_amount,
         coalesce(b.avg_invoice_amount, 0) as avg_invoice_amount,

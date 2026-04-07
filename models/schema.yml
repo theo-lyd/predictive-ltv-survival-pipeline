@@ -81,7 +81,15 @@ models:
         tests:
           - not_null
   - name: fct_customer_ltv
-    description: Final customer-level LTV fact table.
+    description: |
+      Final customer-level LTV fact table.
+      
+      **Data Contract**: churn_probability must be non-null for all rows.
+      If coverage from fct_churn_scores falls below 90%, the join will produce nulls, and the test will fail.
+      This enforces the data quality requirement that churn prediction scores must be available for LTV calculation.
+      
+      **Observation Date**: All tenure and LTV calculations use the observation_date variable.
+      Default is '2024-12-31'. Override with: dbt run --vars '{"observation_date": "YYYY-MM-DD"}'
     columns:
       - name: customer_id
         tests:
@@ -90,16 +98,32 @@ models:
         tests:
           - not_null
       - name: churn_probability
+        description: |
+          Customer churn probability (0-1) from fct_churn_scores.
+          Must be non-null for all rows; if null, indicates missing churn score (model coverage gap).
         tests:
           - not_null
   - name: fct_gold_customer_features
-    description: Gold-layer customer feature table for survival and churn modeling.
+    description: |
+      Gold-layer customer feature table for survival and churn modeling.
+      
+      **Observation Date**: All temporal features (e.g., customer_tenure_months) are calculated relative to the observation_date variable.
+      Default is '2024-12-31'. To snapshot features at a different date:
+      ```
+      dbt run --select fct_gold_customer_features --vars '{"observation_date": "2024-12-15"}'
+      ```
+      
+      This ensures reproducible, time-locked feature sets for backtesting and validation.
+      Features should NOT use wall-clock timestamps for business calculations.
     columns:
       - name: customer_id
         tests:
           - not_null
           - unique
       - name: customer_tenure_months
+        description: |
+          Months between signup and observation_date (for active customers) or churn_date (for churned customers).
+          A fixed observation_date ensures this feature is reproducible across runs.
         tests:
           - not_null
       - name: discount_intensity_index

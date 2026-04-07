@@ -40,6 +40,9 @@ def test_silver_ge_checkpoint_passes(tmp_path: Path):
             {
                 "customer_id": ["C1"],
                 "invoice_amount": [100.0],
+                "invoice_subtotal": [105.0],
+                "discount_amount": [5.0],
+                "invoice_total": [100.0],
             }
         ),
         bronze / "billing",
@@ -79,6 +82,9 @@ def test_silver_ge_checkpoint_fails_negative_mrr(tmp_path: Path):
             {
                 "customer_id": ["C1"],
                 "invoice_amount": [5.0],
+                "invoice_subtotal": [6.0],
+                "discount_amount": [1.0],
+                "invoice_total": [5.0],
             }
         ),
         bronze / "billing",

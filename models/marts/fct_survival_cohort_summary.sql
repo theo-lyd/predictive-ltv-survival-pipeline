@@ -13,9 +13,18 @@ milestones as (
         cohort_label,
         sample_size,
         event_count,
-        max(case when timeline_month <= 3 then survival_probability end) as survival_3m,
-        max(case when timeline_month <= 6 then survival_probability end) as survival_6m,
-        max(case when timeline_month <= 12 then survival_probability end) as survival_12m
+        max(
+            last_value(case when timeline_month <= 3 then survival_probability end ignore nulls)
+            over (partition by cohort_label order by timeline_month rows between unbounded preceding and unbounded following)
+        ) as survival_3m,
+        max(
+            last_value(case when timeline_month <= 6 then survival_probability end ignore nulls)
+            over (partition by cohort_label order by timeline_month rows between unbounded preceding and unbounded following)
+        ) as survival_6m,
+        max(
+            last_value(case when timeline_month <= 12 then survival_probability end ignore nulls)
+            over (partition by cohort_label order by timeline_month rows between unbounded preceding and unbounded following)
+        ) as survival_12m
     from curves
     group by cohort_label, sample_size, event_count
 )
