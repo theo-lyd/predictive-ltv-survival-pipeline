@@ -21,6 +21,17 @@ def _safe_mkdir(path: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
 
+def _resolve_output_path(configured_path: str) -> str:
+    """Resolve output paths consistently whether cwd is repo root or AIRFLOW_HOME."""
+    if os.path.isabs(configured_path):
+        return configured_path
+
+    normalized = configured_path
+    if os.path.basename(os.getcwd()) == "airflow" and configured_path.startswith("airflow/"):
+        normalized = configured_path.split("airflow/", 1)[1]
+    return os.path.join(os.getcwd(), normalized)
+
+
 def collect_observability_snapshot(**context) -> dict[str, Any]:
     """Collect DAG and Monte Carlo health signals into a single snapshot payload."""
     ti = context["task_instance"]
@@ -120,7 +131,7 @@ def publish_grafana_dashboard(**context) -> dict[str, Any]:
         },
     }
 
-    output_path = os.path.join(os.getcwd(), cfg["output_path"])
+    output_path = _resolve_output_path(cfg["output_path"])
     _safe_mkdir(output_path)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(dashboard, f, indent=2)

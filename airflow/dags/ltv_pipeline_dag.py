@@ -72,6 +72,10 @@ try:
     )
     from utils.automated_remediation import run_automated_remediation
     from utils.anomaly_learning import learn_monitor_thresholds
+    from config.phase_4_batch_5_observability_config import (
+        BATCH_5_DAG_CONFIG,
+        OBSERVABILITY_TASK_POLICIES,
+    )
 except ImportError as e:
     raise ImportError(
         f"Failed to import custom operators/utils. "
@@ -126,6 +130,21 @@ def log_pipeline_success(**context):
     print(f"✅ LTV Survival Pipeline Completed Successfully")
     print(f"All layers processed: Bronze → Silver → Gold")
     print(f"{'='*80}\n")
+
+
+def _with_observability_failure_policy(callable_fn):
+    """Wrap observability callables to enforce Batch 5 failure policy."""
+
+    def _wrapped(**context):
+        try:
+            return callable_fn(**context)
+        except Exception as exc:
+            if BATCH_5_DAG_CONFIG["fail_pipeline_on_observability_errors"]:
+                raise
+            print(f"[WARN] Suppressed observability task failure: {exc}")
+            return {"status": "suppressed_error", "error": str(exc)}
+
+    return _wrapped
 
 
 # ============================================================================
@@ -370,10 +389,13 @@ with DAG(
 
     with TaskGroup("phase_5_observability", tooltip="Publish dashboards and run incident automation") as phase_5:
 
+        batch_5_task_kwargs = dict(OBSERVABILITY_TASK_POLICIES)
+
         collect_snapshot = PythonOperator(
             task_id="collect_observability_snapshot",
-            python_callable=collect_observability_snapshot,
+            python_callable=_with_observability_failure_policy(collect_observability_snapshot),
             provide_context=True,
+            **batch_5_task_kwargs,
             doc="""
             Collect latest observability signals from Monte Carlo checks.
 
@@ -385,22 +407,25 @@ with DAG(
 
         publish_grafana = PythonOperator(
             task_id="publish_grafana_dashboard",
-            python_callable=publish_grafana_dashboard,
+            python_callable=_with_observability_failure_policy(publish_grafana_dashboard),
             provide_context=True,
+            **batch_5_task_kwargs,
             doc="""Generate Grafana dashboard JSON artifact from latest snapshot.""",
         )
 
         publish_datadog = PythonOperator(
             task_id="publish_datadog_metrics",
-            python_callable=publish_datadog_metrics,
+            python_callable=_with_observability_failure_policy(publish_datadog_metrics),
             provide_context=True,
+            **batch_5_task_kwargs,
             doc="""Emit observability counters to Datadog when API key is configured.""",
         )
 
         automated_remediation = PythonOperator(
             task_id="run_automated_remediation",
-            python_callable=run_automated_remediation,
+            python_callable=_with_observability_failure_policy(run_automated_remediation),
             provide_context=True,
+            **batch_5_task_kwargs,
             doc="""
             Run severity-based automated remediation workflows.
 
@@ -412,8 +437,9 @@ with DAG(
 
         anomaly_learning = PythonOperator(
             task_id="run_anomaly_learning",
-            python_callable=learn_monitor_thresholds,
+            python_callable=_with_observability_failure_policy(learn_monitor_thresholds),
             provide_context=True,
+            **batch_5_task_kwargs,
             doc="""
             Learn adaptive thresholds from monitor history.
 

@@ -55,9 +55,18 @@ ANOMALY_LEARNING_CONFIG = {
 
 # DAG behavior for observability phase
 BATCH_5_DAG_CONFIG = {
-    "fail_pipeline_on_observability_errors": False,
+    "fail_pipeline_on_observability_errors": True,
     "emit_dashboard_artifacts": True,
     "emit_datadog_metrics": True,
     "run_automated_remediation": True,
     "run_anomaly_learning": True,
+}
+
+# Retry/timeout policies for Batch 5 task hardening
+OBSERVABILITY_TASK_POLICIES = {
+    "retries": 2,
+    "retry_delay": timedelta(minutes=2),
+    "retry_exponential_backoff": True,
+    "max_retry_delay": timedelta(minutes=20),
+    "execution_timeout": timedelta(minutes=25),
 }

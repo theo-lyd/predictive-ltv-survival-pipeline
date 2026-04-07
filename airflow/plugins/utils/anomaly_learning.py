@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -35,6 +34,17 @@ def _safe_mkdir(path: str) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
 
 
+def _resolve_output_path(configured_path: str) -> str:
+    """Resolve output paths consistently whether cwd is repo root or AIRFLOW_HOME."""
+    if os.path.isabs(configured_path):
+        return configured_path
+
+    normalized = configured_path
+    if os.path.basename(os.getcwd()) == "airflow" and configured_path.startswith("airflow/"):
+        normalized = configured_path.split("airflow/", 1)[1]
+    return os.path.join(os.getcwd(), normalized)
+
+
 def _detect_anomalies(values: list[float], z_threshold: float) -> list[int]:
     if len(values) < 3:
         return []
@@ -53,7 +63,7 @@ def _detect_anomalies(values: list[float], z_threshold: float) -> list[int]:
 
 def learn_monitor_thresholds(**context) -> dict[str, Any]:
     """Compute adaptive threshold suggestions from monitor metric history."""
-    from airflow.plugins.hooks.monte_carlo_hook import MonteCarloHook
+    from hooks.monte_carlo_hook import MonteCarloHook
 
     if not ANOMALY_LEARNING_CONFIG["enabled"]:
         return {"status": "skipped", "reason": "anomaly learning disabled"}
@@ -78,11 +88,15 @@ def learn_monitor_thresholds(**context) -> dict[str, Any]:
         if not monitor_id:
             continue
 
-        metrics = hook.get_monitor_metrics(
-            monitor_id=monitor_id,
-            start_time=start_time,
-            end_time=end_time,
-        )
+        try:
+            metrics = hook.get_monitor_metrics(
+                monitor_id=monitor_id,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        except Exception as exc:
+            logger.warning("Skipping monitor %s due to metrics fetch failure: %s", monitor_key, exc)
+            continue
         values = [float(m.get("value", 0.0)) for m in metrics if m.get("value") is not None]
         if len(values) < ANOMALY_LEARNING_CONFIG["min_points"]:
             continue
@@ -116,7 +130,7 @@ def learn_monitor_thresholds(**context) -> dict[str, Any]:
         "anomaly_indexes": anomalies,
     }
 
-    output_path = os.path.join(os.getcwd(), ANOMALY_LEARNING_CONFIG["learning_output_path"])
+    output_path = _resolve_output_path(ANOMALY_LEARNING_CONFIG["learning_output_path"])
     _safe_mkdir(output_path)
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)

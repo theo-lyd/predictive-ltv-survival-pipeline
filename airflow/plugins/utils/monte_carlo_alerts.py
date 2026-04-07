@@ -379,7 +379,7 @@ def create_mc_health_check_task(layer: str, fail_on_critical: bool = True):
         Python callable for use with PythonOperator
     """
     def health_check_task(**context):
-        from airflow.plugins.hooks.monte_carlo_hook import MonteCarloHook
+        from hooks.monte_carlo_hook import MonteCarloHook
         
         hook = MonteCarloHook()
         handler = MonteCarloAlertHandler()

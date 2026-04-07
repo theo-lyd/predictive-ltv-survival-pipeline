@@ -48,7 +48,7 @@ def _build_recommendation(incident: dict[str, Any], layer: str) -> dict[str, str
 
 def run_automated_remediation(**context) -> dict[str, Any]:
     """Apply configured remediation actions for incidents captured in MC health tasks."""
-    from airflow.plugins.hooks.monte_carlo_hook import MonteCarloHook
+    from hooks.monte_carlo_hook import MonteCarloHook
 
     ti = context["task_instance"]
 
