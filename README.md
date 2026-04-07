@@ -46,6 +46,8 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 - [Phase 4 Implementation Plan](docs/PHASE_4_IMPLEMENTATION_PLAN.md) - Strategic plan with 5-batch breakdown, acceptance criteria, risk mitigation
 - [Phase 4 Batch 1 Completion Report](docs/PHASE_4_BATCH_1_COMPLETION_REPORT.md) - Airflow setup, DAG skeleton, configuration, "why" decisions
 - [Phase 4 Batch 1 Command Log](docs/PHASE_4_BATCH_1_COMMAND_LOG.md) - Reproducible commands for environment setup and validation
+- [Phase 4 Batch 2 Completion Report](docs/PHASE_4_BATCH_2_COMPLETION_REPORT.md) - Core DAG implementation, custom operators, Airbyte integration, "why" decisions
+- [Phase 4 Batch 2 Command Log](docs/PHASE_4_BATCH_2_COMMAND_LOG.md) - Reproducible commands for operators, sensors, and DAG validation
 
 ### Audit & Corrections
 - [Audit Findings and Corrections](docs/AUDIT_FINDINGS_AND_CORRECTIONS.md) - Phase 1-3 audit report, high/medium severity findings, and applied corrections
