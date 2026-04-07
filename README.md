@@ -30,3 +30,9 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 ### Phase 1: Ingestion & Bronze Documentation
 - [Phase 1 Implementation Report](docs/PHASE_1_IMPLEMENTATION_REPORT.md) - Batch-by-batch implementation with methodology and package rationale
 - [Phase 1 Command Log](docs/PHASE_1_COMMAND_LOG.md) - End-to-end generation, ingestion, and validation commands
+
+### Phase 2: Silver & Trusted Core Documentation
+- [Phase 2 Implementation Report](docs/PHASE_2_IMPLEMENTATION_REPORT.md) - Silver transformation architecture, GE controls, and acceptance coverage
+- [Phase 2 Command Log](docs/PHASE_2_COMMAND_LOG.md) - Reproducible Phase 2 build/validate command set
+- [Phase 2 Silver Data Dictionary](docs/PHASE_2_SILVER_DATA_DICTIONARY.md) - Core Silver entities, grain, and field semantics
+- [Phase 2 Contract Assumptions](docs/PHASE_2_CONTRACT_ASSUMPTIONS.md) - Null-handling strategy and deterministic business-key assumptions
