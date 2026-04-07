@@ -1,0 +1,45 @@
+version: 2
+updates:
+  # Python pip dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "theo-lyd"
+    commit-message:
+      prefix: "deps(pip):"
+      prefix-development: "deps(pip-dev):"
+      include: "scope"
+    pull-request-branch-name:
+      separator: "/"
+    labels:
+      - "dependencies"
+      - "python"
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    ignore:
+      # Lock to dbt version ranges for stability
+      - dependency-name: "dbt"
+        versions: [">=1.8.0"]
+      - dependency-name: "dbt-*"
+        versions: [">=1.8.0"]
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:15"
+    reviewers:
+      - "theo-lyd"
+    commit-message:
+      prefix: "ci(actions):"
+    labels:
+      - "ci"
+      - "dependencies"

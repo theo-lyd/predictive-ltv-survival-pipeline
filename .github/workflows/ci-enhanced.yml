@@ -1,0 +1,275 @@
+name: Enhanced CI/CD
+
+on:
+  pull_request:
+    branches: [master, develop]
+  push:
+    branches: [master, develop]
+    tags:
+      - 'v*'
+
+env:
+  PYTHON_VERSION: "3.10"
+  PIP_CACHE_DIR: ~/.cache/pip
+  DBT_PROFILES_DIR: ${{ github.workspace }}
+
+jobs:
+  # Quality gates that run on PRs and pushes
+  quality:
+    name: Code Quality & Testing
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for slim CI state comparison
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Display Python version
+        run: python -c "import sys; print(sys.version)"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache dbt artifacts
+        uses: actions/cache@v4
+        with:
+          path: target/
+          key: ${{ runner.os }}-dbt-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-dbt-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install yamllint bandit[toml] pip-audit
+
+      - name: Run pylint
+        run: |
+          python -m pylint src/ --disable=C0111,C0103,C0301,C0413,W0718,R0914,R0911,W0212 \
+            --exit-zero --output-format=text
+        continue-on-error: true
+
+      - name: Run flake8
+        run: |
+          python -m flake8 src tests streamlit_app --max-line-length=100 \
+            --extend-ignore=E501,E402 --count --show-source
+        continue-on-error: true
+
+      - name: Check code formatting with black
+        run: python -m black src tests streamlit_app --line-length=100 --check
+
+      - name: Lint YAML configuration files
+        run: |
+          yamllint -d relaxed .github/workflows/ great_expectations/ dbt_project.yml \
+            profiles.yml 2>/dev/null || true
+        continue-on-error: true
+
+      - name: Security scanning with bandit
+        run: |
+          bandit -r src streamlit_app -ll --exit-code 0 -f json -o bandit-report.json || true
+        continue-on-error: true
+
+      - name: Check for vulnerable dependencies
+        run: pip-audit --skip-editable --desc || true
+        continue-on-error: true
+
+      - name: Run unit and integration tests with coverage
+        run: |
+          python -m pytest tests -v --cov=src --cov=streamlit_app \
+            --cov-report=xml --cov-report=html --cov-report=term \
+            --tb=short
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: htmlcov/
+
+  # dbt lint and schema validation
+  dbt-lint:
+    name: dbt Lint & Parse
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Cache dbt artifacts
+        uses: actions/cache@v4
+        with:
+          path: target/
+          key: ${{ runner.os }}-dbt-lint-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-dbt-lint-
+
+      - name: dbt parse (schema validation)
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}
+        run: dbt parse --project-dir . --select state:modified --state target/
+
+      - name: dbt compile
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}
+        run: dbt compile --project-dir . 2>&1 | head -100
+
+  # dbt tests using state:modified for slim CI
+  dbt-tests:
+    name: dbt Tests (Slim CI)
+    runs-on: ubuntu-latest
+    needs: dbt-lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Cache dbt artifacts
+        uses: actions/cache@v4
+        with:
+          path: target/
+          key: ${{ runner.os }}-dbt-tests-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-dbt-tests-
+
+      - name: dbt test (full suite for main, modified only for PRs)
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}
+        run: |
+          if [ "${{ github.ref }}" == "refs/heads/master" ]; then
+            echo "Running full dbt test suite on master..."
+            dbt test --project-dir . 2>&1 || exit 1
+          else
+            echo "Running slim dbt tests on modified models..."
+            dbt test --project-dir . --select state:modified --state target/ 2>&1 || exit 1
+          fi
+
+  # Great Expectations data quality checks
+  data-quality:
+    name: Great Expectations Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Great Expectations checkpoint
+        run: |
+          python src/scripts/run_silver_quality_checkpoint.py || true
+        continue-on-error: true
+
+      - name: Upload GE report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ge-validation-report
+          path: great_expectations/uncommitted/validations/
+
+  # Code smells and maintainability
+  code-metrics:
+    name: Code Quality Metrics
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pylint radon
+
+      - name: Calculate cyclomatic complexity
+        run: radon cc src streamlit_app -a -s -j > complexity-report.json || true
+        continue-on-error: true
+
+      - name: Calculate maintainability index
+        run: radon mi src streamlit_app -m -j > maintainability-report.json || true
+        continue-on-error: true
+
+      - name: Upload metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-metrics
+          path: |
+            complexity-report.json
+            maintainability-report.json
+
+  # Summary status check
+  ci-status:
+    name: CI Status
+    runs-on: ubuntu-latest
+    needs: [quality, dbt-lint, dbt-tests, data-quality, code-metrics]
+    if: always()
+    steps:
+      - name: Check CI status
+        run: |
+          if [ "${{ needs.quality.result }}" != "success" ] || \
+             [ "${{ needs.dbt-lint.result }}" != "success" ] || \
+             [ "${{ needs.dbt-tests.result }}" != "success" ]; then
+            echo "❌ CI pipeline failed. Review errors above."
+            exit 1
+          fi
+          echo "✅ CI pipeline passed. Ready for review."

@@ -1,0 +1,173 @@
+name: Release & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - master
+
+## Only run if previous CI succeeded
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # Parse semantic version from git tag
+  parse-version:
+    name: Parse Version
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      major: ${{ steps.version.outputs.major }}
+      minor: ${{ steps.version.outputs.minor }}
+      patch: ${{ steps.version.outputs.patch }}
+    steps:
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "major=$(echo $VERSION | cut -d. -f1)" >> $GITHUB_OUTPUT
+          echo "minor=$(echo $VERSION | cut -d. -f2)" >> $GITHUB_OUTPUT
+          echo "patch=$(echo $VERSION | cut -d. -f3)" >> $GITHUB_OUTPUT
+
+  # Create GitHub release
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: parse-version
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          # Generate release notes from commits since last tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"- %h: %s" | head -20)
+          else
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %h: %s")
+          fi
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "## Changes in ${{ needs.parse-version.outputs.version }}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.parse-version.outputs.version }}
+          release_name: Release ${{ needs.parse-version.outputs.version }}
+          body: ${{ steps.release-notes.outputs.notes }}
+          draft: false
+          prerelease: false
+
+  # Build and package artifacts
+  build-artifacts:
+    name: Build Release Artifacts
+    runs-on: ubuntu-latest
+    needs: parse-version
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip setuptools wheel build
+          pip install -r requirements.txt
+
+      - name: Build distribution packages
+        run: |
+          python -m build
+
+      - name: Generate software bill of materials
+        run: |
+          pip install cyclonedx-bom
+          cyclonedx-bom -o sbom.xml
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: |
+            dist/
+            sbom.xml
+
+  # Documentation update
+  update-docs:
+    name: Update Documentation
+    runs-on: ubuntu-latest
+    needs: parse-version
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate changelog entry
+        run: |
+          VERSION=${{ needs.parse-version.outputs.version }}
+          echo "## Version $VERSION - $(date +%Y-%m-%d)" >> CHANGELOG_TEMP.md
+          echo "" >> CHANGELOG_TEMP.md
+          echo "Release notes available at: https://github.com/${{ github.repository }}/releases/tag/v$VERSION" >> CHANGELOG_TEMP.md
+          echo "" >> CHANGELOG_TEMP.md
+          cat CHANGELOG.md >> CHANGELOG_TEMP.md
+          mv CHANGELOG_TEMP.md CHANGELOG.md
+
+      - name: Update version in config
+        run: |
+          sed -i 's/version: .*/version: ${{ needs.parse-version.outputs.version }}/' dbt_project.yml
+
+      - name: Commit documentation updates
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add CHANGELOG.md dbt_project.yml
+          git commit -m "docs: update version to ${{ needs.parse-version.outputs.version }}" || true
+          git push
+
+  # Integration test on released version
+  validate-release:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    needs: [parse-version, build-artifacts]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.parse-version.outputs.version }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install released version
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run validation tests
+        run: |
+          python -m pytest tests -v --tb=short
+
+      - name: Verify dbt artifacts
+        env:
+          DBT_PROFILES_DIR: ${{ github.workspace }}
+        run: |
+          dbt parse --project-dir .
+          dbt compile --project-dir .

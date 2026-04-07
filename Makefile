@@ -1,19 +1,38 @@
-.PHONY: help install install-dev lint format test clean bootstrap validate phase1-generate phase1-ingest phase2-ge-check
+.PHONY: help install install-dev lint format test clean bootstrap validate dbt-debug phase1-generate phase1-ingest phase2-ge-check \
+	sec-audit dbt-test dbt-parse dbt-compile dbt-slim-test ci-local ge-validate
 
 PYTHON ?= $(shell if [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
 PIP := $(PYTHON) -m pip
 
 help:
 	@echo "Available commands:"
+	@echo ""
+	@echo "Core Setup:"
 	@echo "  make install           - Install core dependencies"
 	@echo "  make install-dev       - Install core + dev dependencies"
-	@echo "  make lint              - Run linting checks"
-	@echo "  make format            - Format code with black"
-	@echo "  make test              - Run tests"
-	@echo "  make clean             - Clean build artifacts"
-	@echo "  make bootstrap         - Run project bootstrap"
 	@echo "  make validate          - Validate environment setup"
+	@echo "  make clean             - Clean build artifacts"
+	@echo ""
+	@echo "Code Quality & Linting:"
+	@echo "  make lint              - Run linting checks (pylint, flake8, black)"
+	@echo "  make format            - Format code with black and isort"
+	@echo "  make sec-audit         - Security scanning (bandit, pip-audit)"
+	@echo ""
+	@echo "Testing & Validation:"
+	@echo "  make test              - Run unit/integration tests with coverage"
+	@echo "  make ge-validate       - Run Great Expectations quality checkpoint"
+	@echo ""
+	@echo "dbt Commands:"
 	@echo "  make dbt-debug         - Test dbt connection"
+	@echo "  make dbt-parse         - Parse dbt models (validate syntax)"
+	@echo "  make dbt-compile       - Compile dbt models"
+	@echo "  make dbt-test          - Run full dbt test suite"
+	@echo "  make dbt-slim-test     - Run slim dbt tests (modified only)"
+	@echo ""
+	@echo "CI Pipeline:"
+	@echo "  make ci-local          - Run complete CI pipeline locally"
+	@echo ""
+	@echo "Data Pipeline:"
 	@echo "  make phase1-generate   - Generate synthetic promotions payloads"
 	@echo "  make phase1-ingest     - Ingest raw churn/promotions/billing into Bronze"
 	@echo "  make phase2-ge-check   - Run Silver Great Expectations checkpoint"
@@ -61,5 +80,32 @@ phase1-ingest:
 
 phase2-ge-check:
 	$(PYTHON) src/scripts/run_silver_quality_checkpoint.py
+
+# Security & Audit commands
+sec-audit:
+	@echo "Running security audit..."
+	$(PYTHON) -m bandit -r src streamlit_app -ll || true
+	pip-audit --skip-editable --desc || true
+
+# dbt commands
+dbt-parse:
+	DBT_PROFILES_DIR=$$(pwd) dbt parse --project-dir . 2>&1 | tail -20
+
+dbt-compile:
+	DBT_PROFILES_DIR=$$(pwd) dbt compile --project-dir . 2>&1 | tail -50
+
+dbt-test:
+	DBT_PROFILES_DIR=$$(pwd) dbt test --project-dir . 2>&1
+
+dbt-slim-test:
+	DBT_PROFILES_DIR=$$(pwd) dbt test --project-dir . --select state:modified --state target/ 2>&1 || true
+
+# Data quality validation
+ge-validate:
+	$(PYTHON) src/scripts/run_silver_quality_checkpoint.py
+
+# Complete local CI pipeline
+ci-local: clean install-dev lint test dbt-parse dbt-test ge-validate
+	@echo "✅ All local CI checks passed!"
 
 .DEFAULT_GOAL := help
