@@ -79,6 +79,8 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 - [Compliance Artifact Schema](docs/COMPLIANCE_ARTIFACT_SCHEMA.md) - Audit bundle JSON contract
 - [Compliance Audit Process](docs/COMPLIANCE_AUDIT_PROCESS.md) - Daily/weekly/monthly compliance workflow
 - [SLA Review Cadence](docs/SLA_REVIEW_CADENCE.md) - Expected review rhythm and ownership model
+- [Recovery Playbooks](docs/RECOVERY_PLAYBOOKS.md) - Common failure recovery and cache refresh steps
+- [Reprocessing Guide](docs/REPROCESSING_GUIDE.md) - Rebuild flow for SLA, snapshot, and audit artifacts
 
 ## GitHub Actions Polling (Token-Based)
 

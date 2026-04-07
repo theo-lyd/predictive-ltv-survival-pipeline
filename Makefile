@@ -1,5 +1,6 @@
 .PHONY: help install install-dev lint format test clean bootstrap validate dbt-debug phase1-generate phase1-ingest phase2-ge-check \
-	sec-audit dbt-test dbt-parse dbt-compile dbt-slim-test ci-local ge-validate sla-monitor actions-poll compliance-audit
+	sec-audit dbt-test dbt-parse dbt-compile dbt-slim-test ci-local ge-validate sla-monitor actions-poll compliance-audit \
+	phase7-latency phase7-recovery phase7-reprocess
 
 PYTHON ?= $(shell if [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
 PIP := $(PYTHON) -m pip
@@ -30,6 +31,9 @@ help:
 	@echo "  make dbt-slim-test     - Run slim dbt tests (modified only)"
 	@echo "  make sla-monitor       - Run SLA compliance monitor"
 	@echo "  make compliance-audit  - Export structured SLA compliance artifact"
+	@echo "  make phase7-latency    - Validate Phase 7 monitoring latency budgets"
+	@echo "  make phase7-recovery   - Run Phase 7 recovery checks"
+	@echo "  make phase7-reprocess  - Rebuild SLA history and audit artifacts"
 	@echo "  make actions-poll      - Poll recent GitHub Actions runs (token required)"
 	@echo ""
 	@echo "CI Pipeline:"
@@ -116,6 +120,19 @@ actions-poll:
 
 compliance-audit:
 	$(PYTHON) scripts/export_compliance_audit.py --output logs/compliance_audit.json
+
+phase7-latency:
+	$(PYTHON) scripts/validate_phase7_monitoring_latency.py
+
+phase7-recovery:
+	$(PYTHON) -m streamlit cache clear
+	$(PYTHON) scripts/monitor_sla_compliance.py --output logs/sla_report.json --history-file logs/sla_history.jsonl --audit-output logs/compliance_audit.json
+	$(PYTHON) scripts/export_compliance_audit.py --output logs/compliance_audit.json --report-file logs/sla_report.json --history-file logs/sla_history.jsonl
+
+phase7-reprocess:
+	$(PYTHON) scripts/monitor_sla_compliance.py --output logs/sla_report.json --history-file logs/sla_history.jsonl --audit-output logs/compliance_audit.json
+	$(PYTHON) scripts/export_operational_snapshot.py --output logs/operational_snapshot.json --history-file logs/sla_history.jsonl
+	$(PYTHON) scripts/export_compliance_audit.py --output logs/compliance_audit.json --report-file logs/sla_report.json --history-file logs/sla_history.jsonl
 
 # Complete local CI pipeline
 ci-local: clean install-dev lint test dbt-parse dbt-test ge-validate

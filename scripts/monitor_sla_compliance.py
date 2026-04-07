@@ -14,13 +14,20 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from streamlit_app.core.sla import append_sla_history, build_alert_payload, build_sla_report, summarize_report
+from streamlit_app.core.sla import (
+    append_sla_history,
+    build_alert_payload,
+    build_sla_report,
+    summarize_report,
+)
 from streamlit_app.core.sla import build_compliance_audit_artifact, load_sla_history
 
 
 def _post_json(url: str, payload: dict[str, Any], timeout: float = 10.0) -> None:
     data = json.dumps(payload).encode("utf-8")
-    req = request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
+    req = request.Request(
+        url, data=data, headers={"Content-Type": "application/json"}, method="POST"
+    )
     with request.urlopen(req, timeout=timeout) as response:  # nosec: B310 - optional webhook call
         response.read()
 
@@ -70,7 +77,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.output:
         args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
-    history_target = append_sla_history(report, args.history_file) if args.history_file else append_sla_history(report)
+    history_target = (
+        append_sla_history(report, args.history_file)
+        if args.history_file
+        else append_sla_history(report)
+    )
 
     audit_artifact = None
     if args.audit_output:

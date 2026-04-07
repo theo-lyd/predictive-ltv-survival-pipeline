@@ -12,7 +12,11 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from streamlit_app.core.sla import build_compliance_audit_artifact, build_sla_report, load_sla_history
+from streamlit_app.core.sla import (
+    build_compliance_audit_artifact,
+    build_sla_report,
+    load_sla_history,
+)
 
 
 def _load_report(report_file: Path | None = None) -> dict[str, Any]:
