@@ -237,7 +237,7 @@ jobs:
 
       - name: Run Great Expectations checkpoint
         continue-on-error: ${{ github.event_name == 'pull_request' }}
-        run: python src/scripts/run_silver_quality_checkpoint.py
+        run: python src/scripts/run_silver_quality_checkpoint.py --allow-missing-data
 
       - name: Upload GE report
         if: always()

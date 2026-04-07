@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
@@ -79,12 +81,14 @@ def run_latency_validation(thresholds: dict[str, float] | None = None) -> dict[s
     results["build_compliance_audit_artifact"] = audit_artifact
 
     run_history = build_sla_run_history(history, report)
+    history_df = pd.DataFrame(history)
+    run_history_df = pd.DataFrame(run_history)
     _, elapsed, _ = _measure(
         "chart_generation",
         lambda: (
-            sla_compliance_trend_figure(history),
-            sla_grade_trend_figure(run_history),
-            sla_breach_warning_trend_figure(run_history),
+            sla_compliance_trend_figure(history_df),
+            sla_grade_trend_figure(run_history_df),
+            sla_breach_warning_trend_figure(run_history_df),
         ),
     )
     measurements["chart_generation"] = elapsed
