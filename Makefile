@@ -1,5 +1,5 @@
 .PHONY: help install install-dev lint format test clean bootstrap validate dbt-debug phase1-generate phase1-ingest phase2-ge-check \
-	sec-audit dbt-test dbt-parse dbt-compile dbt-slim-test ci-local ge-validate sla-monitor
+	sec-audit dbt-test dbt-parse dbt-compile dbt-slim-test ci-local ge-validate sla-monitor actions-poll
 
 PYTHON ?= $(shell if [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
 PIP := $(PYTHON) -m pip
@@ -29,6 +29,7 @@ help:
 	@echo "  make dbt-test          - Run full dbt test suite"
 	@echo "  make dbt-slim-test     - Run slim dbt tests (modified only)"
 	@echo "  make sla-monitor       - Run SLA compliance monitor"
+	@echo "  make actions-poll      - Poll recent GitHub Actions runs (token required)"
 	@echo ""
 	@echo "CI Pipeline:"
 	@echo "  make ci-local          - Run complete CI pipeline locally"
@@ -108,6 +109,9 @@ ge-validate:
 # SLA monitoring
 sla-monitor:
 	$(PYTHON) scripts/monitor_sla_compliance.py --strict
+
+actions-poll:
+	$(PYTHON) scripts/poll_workflow_runs.py --limit 10
 
 # Complete local CI pipeline
 ci-local: clean install-dev lint test dbt-parse dbt-test ge-validate

@@ -71,3 +71,19 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 ### Audit & Corrections
 - [Audit Findings and Corrections](docs/AUDIT_FINDINGS_AND_CORRECTIONS.md) - Phase 1-3 audit report, high/medium severity findings, and applied corrections
 - [Phase 4 Audit Findings and Corrections (2026-04-07)](docs/PHASE_4_AUDIT_FINDINGS_AND_CORRECTIONS_2026_04_07.md) - Comprehensive Phase 4 production-readiness audit with implemented fixes and optimization notes
+
+## GitHub Actions Polling (Token-Based)
+
+Use authenticated polling in this container to avoid unauthenticated API rate limits.
+
+1. Export a GitHub token with read access to repository actions:
+	- `export GITHUB_TOKEN=...`
+2. Poll the latest runs:
+	- `python scripts/poll_workflow_runs.py --limit 10`
+3. Poll runs for a specific commit SHA:
+	- `python scripts/poll_workflow_runs.py --sha <sha-prefix> --limit 20`
+4. Wait until filtered runs are complete (non-zero exit on timeout):
+	- `python scripts/poll_workflow_runs.py --sha <sha-prefix> --wait --timeout-seconds 1200`
+
+You can also use the Make target:
+- `make actions-poll`
