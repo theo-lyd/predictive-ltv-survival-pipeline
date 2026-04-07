@@ -20,7 +20,7 @@ for i, question in enumerate(STRATEGIC_QUESTIONS, start=1):
 
 st.info(
 	"Use pages in the left navigation to review Executive, RevOps, Finance, Sales, "
-	"AI Narrative, and KPI Glossary views. Global filters are shared across pages."
+	"AI Narrative, KPI Glossary, and SLA Compliance views. Global filters are shared across pages."
 )
 
 st.write("Current role view:", filters["role"])
