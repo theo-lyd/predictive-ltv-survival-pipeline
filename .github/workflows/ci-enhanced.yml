@@ -181,7 +181,15 @@ jobs:
       - name: dbt test (full suite for main, modified only for PRs)
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         run: |
+          if [ -z "$DATABRICKS_HOST" ] || [ -z "$DATABRICKS_HTTP_PATH" ] || [ -z "$DATABRICKS_TOKEN" ]; then
+            echo "Skipping dbt tests: Databricks credentials are not configured in repository secrets."
+            exit 0
+          fi
+
           if [ "${{ github.ref }}" == "refs/heads/master" ]; then
             echo "Running full dbt test suite on master..."
             dbt test --project-dir . 2>&1 || exit 1
