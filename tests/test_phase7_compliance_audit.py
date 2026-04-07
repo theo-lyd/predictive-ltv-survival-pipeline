@@ -113,7 +113,9 @@ def test_export_compliance_audit_writes_bundle(tmp_path):
     )
 
     output_file = tmp_path / "compliance_audit.json"
-    artifact = export_compliance_audit(output_file, report_file=report_file, history_file=history_file)
+    artifact = export_compliance_audit(
+        output_file, report_file=report_file, history_file=history_file
+    )
 
     assert output_file.exists()
     payload = json.loads(output_file.read_text(encoding="utf-8"))
@@ -129,7 +131,9 @@ def test_monitor_cli_writes_audit_artifact(tmp_path, monkeypatch):
     def _fake_append(report: dict, path: Path | None = None) -> Path:
         target = path or history_file
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text("\n".join(json.dumps(row) for row in _sample_history()) + "\n", encoding="utf-8")
+        target.write_text(
+            "\n".join(json.dumps(row) for row in _sample_history()) + "\n", encoding="utf-8"
+        )
         return target
 
     monkeypatch.setattr(monitor_sla_compliance, "build_sla_report", lambda: _sample_report())
