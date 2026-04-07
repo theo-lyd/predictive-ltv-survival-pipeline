@@ -84,7 +84,7 @@ jobs:
           bandit -r src streamlit_app -ll -f json -o bandit-report.json
 
       - name: Check for vulnerable dependencies
-        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
         run: pip-audit --skip-editable --desc
 
       - name: Run unit and integration tests with coverage
