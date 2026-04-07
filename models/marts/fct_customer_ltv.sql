@@ -14,6 +14,13 @@ with features as (
     from {{ ref('fct_gold_customer_features') }}
 ),
 
+churn_scores as (
+    select
+        customer_id,
+        churn_probability
+    from {{ ref('fct_churn_scores') }}
+),
+
 assembled as (
     select
         f.customer_id,
@@ -26,13 +33,10 @@ assembled as (
         f.discount_intensity_index,
         f.contributed_margin_monthly,
         f.acquisition_cost,
-        case
-            when f.state_transition in ('active_to_churn', 'discounted_to_churn') then 0.95
-            when f.state_transition = 'active_with_discount' then 0.35
-            else 0.15
-        end as churn_probability,
+        coalesce(c.churn_probability, 0.5) as churn_probability,
         least(greatest(coalesce(f.customer_tenure_months, 1), 1), 36) as capped_tenure_months
     from features f
+    left join churn_scores c on f.customer_id = c.customer_id
 )
 
 select

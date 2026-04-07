@@ -89,6 +89,9 @@ models:
       - name: ltv_net_value
         tests:
           - not_null
+      - name: churn_probability
+        tests:
+          - not_null
   - name: fct_gold_customer_features
     description: Gold-layer customer feature table for survival and churn modeling.
     columns:
@@ -103,5 +106,53 @@ models:
         tests:
           - not_null
       - name: contributed_margin_monthly
+        tests:
+          - not_null
+  - name: fct_churn_scores
+    description: Customer-level churn prediction scores generated from Gold features.
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+      - name: churn_probability
+        tests:
+          - not_null
+      - name: risk_bucket
+        tests:
+          - not_null
+  - name: fct_survival_curves
+    description: Kaplan-Meier cohort survival curves for discount target cohorts.
+    columns:
+      - name: cohort_label
+        tests:
+          - not_null
+      - name: survival_probability
+        tests:
+          - not_null
+  - name: fct_survival_cohort_summary
+    description: Cohort survival outputs at 3/6/12 month milestones.
+    columns:
+      - name: cohort_label
+        tests:
+          - not_null
+      - name: survival_12m
+        tests:
+          - not_null
+  - name: fct_model_quality_diagnostics
+    description: Predictive model quality diagnostics for monitoring and governance.
+    columns:
+      - name: scored_population
+        tests:
+          - not_null
+      - name: directional_accuracy_proxy
+        tests:
+          - not_null
+  - name: fct_model_drift_baseline
+    description: Drift baseline comparison for model feature population mix.
+    columns:
+      - name: discount_band
+        tests:
+          - not_null
+      - name: drift_status
         tests:
           - not_null
