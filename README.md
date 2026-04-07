@@ -44,6 +44,8 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 
 ### Phase 4: Orchestration & Observability Documentation (In Progress)
 - [Phase 4 Implementation Plan](docs/PHASE_4_IMPLEMENTATION_PLAN.md) - Strategic plan with 5-batch breakdown, acceptance criteria, risk mitigation
+- [Phase 4 Batch 1 Completion Report](docs/PHASE_4_BATCH_1_COMPLETION_REPORT.md) - Airflow setup, DAG skeleton, configuration, "why" decisions
+- [Phase 4 Batch 1 Command Log](docs/PHASE_4_BATCH_1_COMMAND_LOG.md) - Reproducible commands for environment setup and validation
 
 ### Audit & Corrections
 - [Audit Findings and Corrections](docs/AUDIT_FINDINGS_AND_CORRECTIONS.md) - Phase 1-3 audit report, high/medium severity findings, and applied corrections
