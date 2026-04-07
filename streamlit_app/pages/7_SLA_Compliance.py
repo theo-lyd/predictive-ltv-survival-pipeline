@@ -7,11 +7,12 @@ import streamlit as st
 
 from streamlit_app.core.charts import sla_compliance_trend_figure, sla_status_distribution_figure
 from streamlit_app.core.sla import build_alert_payload, build_sla_report, load_sla_history
-from streamlit_app.core.ui import render_sidebar_filters
+from streamlit_app.core.ui import render_sidebar_filters, require_view_access
 
 
 st.set_page_config(page_title="SLA Compliance", layout="wide")
-render_sidebar_filters()
+filters = render_sidebar_filters()
+require_view_access(filters["role"], "SLA Compliance", "sla_operations")
 
 st.title("SLA Compliance Monitoring")
 st.caption("Phase 6 Batch 4: monitored SLAs, alert payloads, and compliance tracking")

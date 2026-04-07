@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from streamlit_app.core.auth import get_visible_views
 from streamlit_app.core.charts import cohort_heatmap_figure, ltv_journey_sankey_figure, survival_comparison_figure
 from streamlit_app.core.data_access import (
     build_kpis,
@@ -17,11 +18,18 @@ from streamlit_app.core.ui import (
     render_narrative_contract_warning,
     render_kpi_ribbon,
     render_sidebar_filters,
+    require_view_access,
 )
 
 
 st.title("Executive Flight Deck")
 filters = render_sidebar_filters()
+require_view_access(filters["role"], "Executive Flight Deck", "executive_dashboard")
+
+st.sidebar.caption("Role-aware access is active")
+st.sidebar.write("Visible views:")
+for view in get_visible_views(filters["role"]):
+    st.sidebar.write(f"- {view.label}")
 
 data = get_filtered_dashboard_data(filters)
 render_data_provenance_badge(data)

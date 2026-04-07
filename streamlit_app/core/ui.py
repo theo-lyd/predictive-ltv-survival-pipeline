@@ -6,6 +6,7 @@ from datetime import date
 
 import streamlit as st
 
+from streamlit_app.core.auth import build_access_denied_message, get_locked_views, get_visible_views, role_can_access
 from streamlit_app.core.data_access import (
     DashboardData,
     apply_global_filters,
@@ -38,6 +39,35 @@ def render_sidebar_filters() -> dict[str, object]:
         "product_tier": product_tier,
         "date_range": date_range,
     }
+
+
+def render_access_summary(role: str) -> None:
+    visible_views = get_visible_views(role)
+    locked_views = get_locked_views(role)
+
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("Available Views")
+    for view in visible_views:
+        st.sidebar.write(f"✓ {view.label}")
+
+    if locked_views:
+        with st.sidebar.expander("Restricted views"):
+            for view in locked_views:
+                st.write(f"- {view.label}: {view.description}")
+
+
+def render_access_denied(role: str | None, view_label: str, capability: str | None) -> None:
+    st.error(build_access_denied_message(role, view_label, capability))
+    st.info("Select a permitted role from the sidebar or contact the repository owner for access.")
+
+
+def require_view_access(role: str | None, view_label: str, capability: str | None) -> bool:
+    if role_can_access(role, capability):
+        return True
+
+    render_access_denied(role, view_label, capability)
+    st.stop()
+    return False
 
 
 def render_kpi_ribbon(kpis: dict[str, float]) -> None:

@@ -8,11 +8,13 @@ from streamlit_app.core.ui import (
     get_cached_narrative_summary,
     render_narrative_contract_warning,
     render_sidebar_filters,
+    require_view_access,
 )
 
 
 st.title("AI Daily Narrative")
-render_sidebar_filters()
+filters = render_sidebar_filters()
+require_view_access(filters["role"], "AI Daily Narrative", "narrative_review")
 
 summary = get_cached_narrative_summary()
 render_narrative_contract_warning(summary, severity="error")
