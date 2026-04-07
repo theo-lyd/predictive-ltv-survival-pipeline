@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from streamlit_app.core.sla import build_alert_payload, build_sla_report, summarize_report
+from streamlit_app.core.sla import append_sla_history, build_alert_payload, build_sla_report, summarize_report
 
 
 def _post_json(url: str, payload: dict[str, Any], timeout: float = 10.0) -> None:
@@ -52,6 +52,11 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="Write the report JSON to a file for downstream automation",
     )
+    parser.add_argument(
+        "--history-file",
+        type=Path,
+        help="Append a compact record to a local or archived SLA history file",
+    )
     args = parser.parse_args(argv)
 
     report = build_sla_report()
@@ -59,6 +64,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.output:
         args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    if args.history_file:
+        append_sla_history(report, args.history_file)
+    else:
+        append_sla_history(report)
 
     if args.json:
         print(json.dumps({"report": report, "alerts": payloads}, indent=2))

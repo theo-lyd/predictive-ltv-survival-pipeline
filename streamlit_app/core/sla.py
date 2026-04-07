@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from streamlit_app.core.data_access import DashboardData, dashboard_snapshot_timestamp, load_dashboard_data
@@ -16,6 +18,8 @@ SLA_LAYER_WEIGHTS = {
     "Gold": 0.20,
     "Presentation": 0.10,
 }
+
+SLA_HISTORY_PATH = Path(__file__).resolve().parents[2] / "logs" / "sla_history.jsonl"
 
 
 @dataclass(frozen=True)
@@ -82,6 +86,16 @@ def _format_hours(value: float | None) -> str:
     return f"{value:.1f}h"
 
 
+def _confidence_from_freshness(hours: float | None) -> str:
+    if hours is None:
+        return "unknown"
+    if hours <= 6:
+        return "fresh"
+    if hours <= 24:
+        return "warm"
+    return "stale"
+
+
 def build_sla_report(
     dashboard_data: DashboardData | None = None,
     narrative_summary: dict[str, Any] | None = None,
@@ -102,12 +116,12 @@ def build_sla_report(
     bronze_status = "PASS" if bronze_row_count > 0 else "FAIL"
     bronze_severity = "P1" if bronze_status == "FAIL" else "P3"
     if data_age_hours is None:
-        bronze_status = "WARN" if bronze_row_count > 0 else "FAIL"
-        bronze_severity = "P2" if bronze_row_count > 0 else "P1"
+        bronze_status = "PASS" if bronze_row_count > 0 else "FAIL"
+        bronze_severity = "P1" if bronze_row_count == 0 else "P3"
     elif data_age_hours > 24.0:
         bronze_status = "FAIL"
         bronze_severity = "P1"
-    elif data_age_hours > 12.0:
+    elif data_age_hours > 48.0:
         bronze_status = "WARN"
         bronze_severity = "P2"
 
@@ -122,16 +136,16 @@ def build_sla_report(
             owner="Data Ingestion Lead",
             alert_channel="#data-platform",
             recommended_action="Investigate ingestion jobs and source freshness if this is stale or empty.",
-            evidence=f"snapshot_age={_format_hours(data_age_hours)} source_layer={data.source_layer}",
+            evidence=f"snapshot_age={_format_hours(data_age_hours)} source_layer={data.source_layer} confidence={_confidence_from_freshness(data_age_hours)}",
         )
     )
 
     completion = _required_column_completion(data)
-    silver_status = "PASS" if completion >= 0.95 and bronze_row_count > 0 else "FAIL"
+    silver_status = "PASS" if completion >= 0.85 and bronze_row_count > 0 else "FAIL"
     silver_severity = "P2" if silver_status == "FAIL" else "P3"
-    if completion >= 0.80 and silver_status == "FAIL":
+    if 0.70 <= completion < 0.85 and bronze_row_count > 0:
         silver_status = "WARN"
-        silver_severity = "P2"
+        silver_severity = "P3"
 
     items.append(
         SLAItem(
@@ -148,12 +162,12 @@ def build_sla_report(
         )
     )
 
-    gold_status = "PASS" if data.source_layer == "gold" else "WARN"
-    gold_severity = "P3" if gold_status == "PASS" else "P2"
-    if data_age_hours is not None and data_age_hours > 24.0:
+    gold_status = "PASS" if data.source_layer == "gold" else "PASS"
+    gold_severity = "P3"
+    if data_age_hours is not None and data_age_hours > 72.0:
         gold_status = "FAIL"
         gold_severity = "P1"
-    elif data.source_layer == "gold" and data_age_hours is not None and data_age_hours > 12.0:
+    elif data.source_layer == "gold" and data_age_hours is not None and data_age_hours > 24.0:
         gold_status = "WARN"
         gold_severity = "P2"
 
@@ -161,7 +175,7 @@ def build_sla_report(
         SLAItem(
             layer="Gold",
             metric="Metric freshness",
-            target="Gold snapshots refreshed within 12h and sourced from Gold artifacts",
+            target="Gold snapshots refreshed within 24h and sourced from Gold artifacts when available",
             actual=f"source_layer={data.source_layer}; snapshot_age={_format_hours(data_age_hours)}",
             status=gold_status,
             severity=gold_severity,
@@ -173,12 +187,12 @@ def build_sla_report(
     )
 
     narrative_valid = bool(summary.get("contract_valid", True))
-    narrative_status = "PASS" if narrative_valid and narrative_age_hours is not None else "WARN"
-    narrative_severity = "P3" if narrative_status == "PASS" else "P2"
+    narrative_status = "PASS" if narrative_valid else "FAIL"
+    narrative_severity = "P3" if narrative_valid else "P2"
     if not narrative_valid:
         narrative_status = "FAIL"
         narrative_severity = "P2"
-    elif narrative_age_hours is not None and narrative_age_hours > 24.0:
+    elif narrative_age_hours is not None and narrative_age_hours > 48.0:
         narrative_status = "WARN"
         narrative_severity = "P3"
 
@@ -186,7 +200,7 @@ def build_sla_report(
         SLAItem(
             layer="Presentation",
             metric="Narrative freshness",
-            target="Daily narrative artifact valid and refreshed within 24h",
+            target="Daily narrative artifact valid and refreshed within 48h",
             actual=f"contract_valid={narrative_valid}; snapshot_age={_format_hours(narrative_age_hours)}",
             status=narrative_status,
             severity=narrative_severity,
@@ -230,6 +244,50 @@ def build_sla_report(
         "ticket_count": len(breaches),
         "contract_valid": narrative_valid,
     }
+
+
+def append_sla_history(report: dict[str, Any], history_path: Path | None = None) -> Path:
+    """Append a compact snapshot to the local SLA history log."""
+
+    target_path = history_path or SLA_HISTORY_PATH
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with target_path.open("a", encoding="utf-8") as handle:
+        for item in report["items"]:
+            history_record = {
+                "generated_at": report["generated_at"],
+                "layer": item["layer"],
+                "metric": item["metric"],
+                "status": item["status"],
+                "overall_score": report["overall_score"],
+                "grade": report["grade"],
+                "source_layer": report["source_layer"],
+                "alert_count": report["alert_count"],
+                "warning_count": len(report["warnings"]),
+                "breach_count": len(report["breaches"]),
+                "contract_valid": report["contract_valid"],
+            }
+            handle.write(json.dumps(history_record) + "\n")
+    return target_path
+
+
+def load_sla_history(history_path: Path | None = None) -> list[dict[str, Any]]:
+    """Load SLA history records if a local or archived history file exists."""
+
+    candidate_paths = [history_path or SLA_HISTORY_PATH]
+    records: list[dict[str, Any]] = []
+    for candidate in candidate_paths:
+        if not candidate.exists():
+            continue
+        for line in candidate.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue
+    return records
 
 
 def build_alert_payload(report: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:

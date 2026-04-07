@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 
+import pandas as pd
 import streamlit as st
 
-from streamlit_app.core.sla import build_sla_report, build_alert_payload
+from streamlit_app.core.charts import sla_compliance_trend_figure, sla_status_distribution_figure
+from streamlit_app.core.sla import build_alert_payload, build_sla_report, load_sla_history
 from streamlit_app.core.ui import render_sidebar_filters
 
 
@@ -15,6 +17,23 @@ st.title("SLA Compliance Monitoring")
 st.caption("Phase 6 Batch 4: monitored SLAs, alert payloads, and compliance tracking")
 
 report = build_sla_report()
+history = load_sla_history()
+
+if history:
+    history_df = pd.DataFrame(history)
+else:
+    history_df = pd.DataFrame(
+        [
+            {
+                "generated_at": report["generated_at"],
+                "layer": item["layer"],
+                "metric": item["metric"],
+                "status": item["status"],
+                "overall_score": report["overall_score"],
+            }
+            for item in report["items"]
+        ]
+    )
 
 score_col, grade_col, breach_col, source_col = st.columns(4)
 score_col.metric("Overall Score", f"{report['overall_score']:.1f}/100")
@@ -23,6 +42,16 @@ breach_col.metric("Breaches", report["alert_count"])
 source_col.metric("Source Layer", report["source_layer"])
 
 st.progress(min(1.0, report["overall_score"] / 100.0))
+
+st.subheader("Historical Compliance")
+if not history_df.empty:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.plotly_chart(sla_compliance_trend_figure(history_df), use_container_width=True)
+    with col2:
+        st.plotly_chart(sla_status_distribution_figure(history_df), use_container_width=True)
+else:
+    st.info("No persisted SLA history found yet. Scheduled runs will populate the trend charts.")
 
 st.subheader("Layer Status")
 for item in report["items"]:

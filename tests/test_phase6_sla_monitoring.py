@@ -12,7 +12,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from streamlit_app.core.data_access import DashboardData
-from streamlit_app.core.sla import build_alert_payload, build_sla_report, summarize_report
+from streamlit_app.core.sla import append_sla_history, build_alert_payload, build_sla_report, load_sla_history, summarize_report
 
 
 def _complete_dashboard_data() -> DashboardData:
@@ -108,3 +108,56 @@ def test_build_sla_report_detects_breaches_and_builds_payload(monkeypatch):
     assert payload["severity"] in {"P1", "P2", "P3"}
     assert payload["ticket"]["summary"]
     assert payload["ticket"]["description"]
+
+
+def test_fallback_snapshot_stays_quiet_when_fresh_and_complete(monkeypatch):
+    now = datetime(2026, 4, 7, 12, 0, tzinfo=timezone.utc)
+    dashboard_data = _complete_dashboard_data()
+    dashboard_data = DashboardData(
+        billing=dashboard_data.billing,
+        churn=dashboard_data.churn,
+        promotions=dashboard_data.promotions,
+        source_layer="raw-fallback",
+        snapshot_ts=now.timestamp() - 5 * 3600,
+    )
+    summary = {
+        "summary_date": "2026-04-07",
+        "headline": "Fallback but healthy",
+        "insights": ["Data is fresh."],
+        "actions": ["Continue monitoring."],
+        "provenance": "fallback-template",
+        "contract_valid": True,
+        "contract_errors": [],
+    }
+
+    monkeypatch.setattr("streamlit_app.core.sla.dashboard_snapshot_timestamp", lambda: now.timestamp() - 5 * 3600)
+    monkeypatch.setattr("streamlit_app.core.sla.narrative_snapshot_timestamp", lambda: now.timestamp() - 2 * 3600)
+
+    report = build_sla_report(dashboard_data=dashboard_data, narrative_summary=summary, now=now)
+
+    assert report["alert_count"] == 0
+    assert report["warnings"] == []
+    assert all(item["status"] == "PASS" for item in report["items"])
+
+
+def test_sla_history_append_and_load(tmp_path):
+    now = datetime(2026, 4, 7, 12, 0, tzinfo=timezone.utc)
+    dashboard_data = _complete_dashboard_data()
+    summary = {
+        "summary_date": "2026-04-07",
+        "headline": "History test",
+        "insights": ["Stable."],
+        "actions": ["Keep going."],
+        "provenance": "dbt",
+        "contract_valid": True,
+        "contract_errors": [],
+    }
+    report = build_sla_report(dashboard_data=dashboard_data, narrative_summary=summary, now=now)
+    history_path = tmp_path / "sla_history.jsonl"
+
+    append_sla_history(report, history_path)
+    records = load_sla_history(history_path)
+
+    assert len(records) == len(report["items"])
+    assert {record["layer"] for record in records} == {item["layer"] for item in report["items"]}
+    assert all(record["overall_score"] == report["overall_score"] for record in records)

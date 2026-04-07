@@ -61,3 +61,37 @@ def ltv_journey_sankey_figure(flows: pd.DataFrame) -> go.Figure:
     )
     fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
     return fig
+
+
+def sla_compliance_trend_figure(history: pd.DataFrame) -> go.Figure:
+    if history.empty:
+        return go.Figure()
+
+    fig = px.line(
+        history,
+        x="generated_at",
+        y="overall_score",
+        color="layer",
+        markers=True,
+        labels={"generated_at": "Run Time", "overall_score": "Compliance Score", "layer": "Layer"},
+    )
+    fig.update_yaxes(range=[0, 100])
+    fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
+    return fig
+
+
+def sla_status_distribution_figure(history: pd.DataFrame) -> go.Figure:
+    if history.empty:
+        return go.Figure()
+
+    counts = history.groupby(["layer", "status"]).size().reset_index(name="count")
+    fig = px.bar(
+        counts,
+        x="layer",
+        y="count",
+        color="status",
+        barmode="group",
+        labels={"layer": "Layer", "count": "Run Count", "status": "Status"},
+    )
+    fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
+    return fig
