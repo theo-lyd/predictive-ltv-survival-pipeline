@@ -1,40 +1,56 @@
-with customers as (
-    select * from {{ ref('stg_customers') }}
-),
-promotions as (
-    select * from {{ ref('stg_promotions') }}
-),
-customer_rollup as (
+with features as (
     select
-        c.customer_id,
-        c.subscription_id,
-        c.region,
-        c.product_tier,
-        c.signup_ts,
-        c.churn_ts,
-        c.monthly_recurring_revenue,
-        coalesce(max(p.discount_percent), 0) as discount_percent,
+        customer_id,
+        product_tier,
+        signup_ts,
+        churn_ts,
+        is_churned,
+        customer_tenure_months,
+        monthly_recurring_revenue,
+        discount_intensity_index,
+        contributed_margin_monthly,
+        acquisition_cost,
+        state_transition
+    from {{ ref('fct_gold_customer_features') }}
+),
+
+assembled as (
+    select
+        f.customer_id,
+        f.product_tier,
+        f.signup_ts,
+        f.churn_ts,
+        f.is_churned,
+        f.state_transition,
+        f.monthly_recurring_revenue,
+        f.discount_intensity_index,
+        f.contributed_margin_monthly,
+        f.acquisition_cost,
         case
-            when c.churn_ts is null then 0
-            else greatest(datediff(c.churn_ts, c.signup_ts), 0)
-        end as tenure_days
-    from customers c
-    left join promotions p
-        on c.customer_id = p.customer_id
-    group by 1,2,3,4,5,6,7
+            when f.state_transition in ('active_to_churn', 'discounted_to_churn') then 0.95
+            when f.state_transition = 'active_with_discount' then 0.35
+            else 0.15
+        end as churn_probability,
+        least(greatest(coalesce(f.customer_tenure_months, 1), 1), 36) as capped_tenure_months
+    from features f
 )
 
 select
     customer_id,
-    subscription_id,
-    region,
     product_tier,
     signup_ts,
     churn_ts,
-    tenure_days,
+    is_churned,
+    state_transition,
     monthly_recurring_revenue,
-    discount_percent,
-    monthly_recurring_revenue * greatest(tenure_days / 30.0, 1) as gross_revenue_proxy,
-    monthly_recurring_revenue * greatest(tenure_days / 30.0, 1) * (1 - discount_percent / 100.0) as net_revenue_proxy,
+    discount_intensity_index,
+    contributed_margin_monthly,
+    acquisition_cost,
+    churn_probability,
+    capped_tenure_months,
+    monthly_recurring_revenue * capped_tenure_months as gross_revenue_ltv,
+    monthly_recurring_revenue * capped_tenure_months * (1 - discount_intensity_index) as discounted_revenue_ltv,
+    contributed_margin_monthly * capped_tenure_months as contributed_margin_ltv,
+    (contributed_margin_monthly * capped_tenure_months) - acquisition_cost as ltv_net_value,
     current_timestamp() as model_built_at
-from customer_rollup
+from assembled

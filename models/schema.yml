@@ -82,3 +82,26 @@ models:
           - not_null
   - name: fct_customer_ltv
     description: Final customer-level LTV fact table.
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+      - name: ltv_net_value
+        tests:
+          - not_null
+  - name: fct_gold_customer_features
+    description: Gold-layer customer feature table for survival and churn modeling.
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+      - name: customer_tenure_months
+        tests:
+          - not_null
+      - name: discount_intensity_index
+        tests:
+          - not_null
+      - name: contributed_margin_monthly
+        tests:
+          - not_null
