@@ -23,6 +23,7 @@ data = apply_global_filters(
     load_dashboard_data(),
     region=filters["region"],
     product_tier=filters["product_tier"],
+    date_range=filters["date_range"],
 )
 
 kpis = build_kpis(data)

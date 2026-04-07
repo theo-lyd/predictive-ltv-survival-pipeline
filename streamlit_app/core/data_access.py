@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -63,15 +64,58 @@ def load_dashboard_data() -> DashboardData:
     return DashboardData(billing=billing, churn=churn, promotions=promotions)
 
 
-def apply_global_filters(data: DashboardData, region: str, product_tier: str) -> DashboardData:
+def _normalize_date_range(date_range: Any) -> tuple[pd.Timestamp | None, pd.Timestamp | None]:
+    if not date_range:
+        return None, None
+    if isinstance(date_range, tuple) and len(date_range) == 2:
+        start, end = date_range
+    else:
+        start, end = date_range, date_range
+
+    if isinstance(start, date):
+        start = pd.Timestamp(start)
+    if isinstance(end, date):
+        end = pd.Timestamp(end)
+    return start, end
+
+
+def apply_global_filters(
+    data: DashboardData,
+    region: str,
+    product_tier: str,
+    date_range: Any = None,
+) -> DashboardData:
     churn = data.churn.copy()
     billing = data.billing.copy()
     promotions = data.promotions.copy()
+    start_date, end_date = _normalize_date_range(date_range)
 
     if not churn.empty and region != "All":
         churn = churn[churn["region"] == region]
     if not churn.empty and product_tier != "All":
         churn = churn[churn["product_tier"] == product_tier]
+
+    if not churn.empty and start_date is not None and end_date is not None:
+        churn = churn[
+            (churn["signup_date"].fillna(pd.Timestamp.min) <= end_date)
+            & (
+                churn["churn_date"].fillna(pd.Timestamp.max) >= start_date
+            )
+        ]
+
+    if not billing.empty and start_date is not None and end_date is not None and "invoice_date" in billing.columns:
+        billing = billing[(billing["invoice_date"] >= start_date) & (billing["invoice_date"] <= end_date)]
+
+    if (
+        not promotions.empty
+        and start_date is not None
+        and end_date is not None
+        and "promotion_start_date" in promotions.columns
+    ):
+        promotions = promotions[
+            (promotions["promotion_start_date"] >= start_date)
+            & (promotions["promotion_start_date"] <= end_date)
+        ]
 
     if not billing.empty and not churn.empty and "customer_id" in billing.columns:
         billing = billing[billing["customer_id"].isin(churn["customer_id"].unique())]

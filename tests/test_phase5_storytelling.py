@@ -13,7 +13,9 @@ if str(REPO_ROOT / "airflow") not in sys.path:
 if str(REPO_ROOT / "airflow" / "plugins") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "airflow" / "plugins"))
 
-from streamlit_app.core.data_access import build_kpis, load_dashboard_data
+import pandas as pd
+
+from streamlit_app.core.data_access import DashboardData, apply_global_filters, build_kpis, load_dashboard_data
 from streamlit_app.core.narrative import load_daily_summary
 from streamlit_app.core.simulator import simulate_nrr_impact
 from utils.executive_storytelling import _fallback_summary
@@ -44,3 +46,41 @@ def test_narrative_loader_fallback_shape():
     assert "headline" in result
     assert "insights" in result
     assert "actions" in result
+
+
+def test_apply_global_filters_respects_date_range():
+    churn = pd.DataFrame(
+        {
+            "customer_id": ["c1", "c2"],
+            "signup_date": pd.to_datetime(["2024-01-01", "2024-05-01"]),
+            "churn_date": pd.to_datetime([None, None]),
+            "region": ["EU", "EU"],
+            "product_tier": ["Pro", "Pro"],
+            "monthly_recurring_revenue": [100.0, 200.0],
+        }
+    )
+    billing = pd.DataFrame(
+        {
+            "customer_id": ["c1", "c2"],
+            "invoice_date": pd.to_datetime(["2024-01-15", "2024-05-15"]),
+            "invoice_amount": [100.0, 200.0],
+        }
+    )
+    promotions = pd.DataFrame(
+        {
+            "customer_id": ["c1", "c2"],
+            "promotion_start_date": pd.to_datetime(["2024-01-10", "2024-05-10"]),
+            "discount_percent": [5.0, 10.0],
+        }
+    )
+
+    filtered = apply_global_filters(
+        DashboardData(billing=billing, churn=churn, promotions=promotions),
+        region="EU",
+        product_tier="Pro",
+        date_range=(pd.Timestamp("2024-01-01"), pd.Timestamp("2024-03-31")),
+    )
+
+    assert len(filtered.churn) == 1
+    assert len(filtered.billing) == 1
+    assert len(filtered.promotions) == 1

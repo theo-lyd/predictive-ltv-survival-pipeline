@@ -66,6 +66,7 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 - [Phase 5 Batch 3 Completion Report](docs/PHASE_5_BATCH_3_COMPLETION_REPORT.md) - Role views, glossary, latency validation, and QA completion
 - [Phase 5 Batch 3 Command Log](docs/PHASE_5_BATCH_3_COMMAND_LOG.md) - Commands for tests, latency checks, and local app run
 - [Phase 5 Batch Completion Summary](docs/PHASE_5_BATCH_COMPLETION_SUMMARY.md) - Consolidated acceptance mapping and strategic-question coverage
+- [Phase 5 Audit Findings and Corrections (2026-04-07)](docs/PHASE_5_AUDIT_FINDINGS_AND_CORRECTIONS_2026_04_07.md) - Expert-level audit with implemented fixes and optimization backlog
 
 ### Audit & Corrections
 - [Audit Findings and Corrections](docs/AUDIT_FINDINGS_AND_CORRECTIONS.md) - Phase 1-3 audit report, high/medium severity findings, and applied corrections

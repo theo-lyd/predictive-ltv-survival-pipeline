@@ -10,7 +10,12 @@ from streamlit_app.core.ui import render_kpi_ribbon, render_sidebar_filters
 st.title("RevOps Leadership View")
 filters = render_sidebar_filters()
 
-data = apply_global_filters(load_dashboard_data(), filters["region"], filters["product_tier"])
+data = apply_global_filters(
+	load_dashboard_data(),
+	filters["region"],
+	filters["product_tier"],
+	filters["date_range"],
+)
 kpis = build_kpis(data)
 render_kpi_ribbon(kpis)
 

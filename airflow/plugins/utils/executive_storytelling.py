@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -113,6 +114,15 @@ def _llm_summary(snapshot: dict[str, Any], obs: dict[str, Any]) -> dict[str, Any
         "Content-Type": "application/json",
     }
 
+    def _parse_json_payload(content: str) -> dict[str, Any]:
+        """Parse JSON from plain or fenced model output."""
+        content = content.strip()
+        if content.startswith("```"):
+            fence_match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", content, flags=re.DOTALL)
+            if fence_match:
+                content = fence_match.group(1)
+        return json.loads(content)
+
     try:
         response = requests.post(
             "https://api.openai.com/v1/chat/completions",
@@ -123,7 +133,7 @@ def _llm_summary(snapshot: dict[str, Any], obs: dict[str, Any]) -> dict[str, Any
         response.raise_for_status()
 
         content = response.json()["choices"][0]["message"]["content"]
-        parsed = json.loads(content)
+        parsed = _parse_json_payload(content)
         return {
             "summary_date": datetime.utcnow().date().isoformat(),
             "headline": parsed.get("headline", "Daily summary unavailable."),
