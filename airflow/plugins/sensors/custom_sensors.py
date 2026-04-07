@@ -8,7 +8,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from airflow.sensors.base import BaseSensorOperator
-from airflow.utils.decorators import poke_mode_only
+
+try:
+    from airflow.utils.decorators import poke_mode_only
+except ImportError:
+    # Airflow compatibility fallback: if decorator is unavailable, use no-op.
+    def poke_mode_only(func):
+        return func
 
 if TYPE_CHECKING:
     from airflow.utils.context import Context
