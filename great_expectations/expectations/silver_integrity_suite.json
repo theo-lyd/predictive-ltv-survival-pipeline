@@ -1,0 +1,27 @@
+{
+  "suite_name": "silver_integrity_suite",
+  "expectations": [
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "monthly_recurring_revenue",
+        "min_value": 0
+      }
+    },
+    {
+      "expectation_type": "expect_column_pair_values_a_to_be_greater_than_b",
+      "kwargs": {
+        "column_A": "churn_date",
+        "column_B": "promotion_start_date",
+        "or_equal": true
+      }
+    },
+    {
+      "expectation_type": "expect_column_pair_values_to_be_equal",
+      "kwargs": {
+        "column_A": "expected_invoice_total",
+        "column_B": "invoice_total"
+      }
+    }
+  ]
+}

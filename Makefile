@@ -1,4 +1,4 @@
-.PHONY: help install install-dev lint format test clean bootstrap validate phase1-generate phase1-ingest
+.PHONY: help install install-dev lint format test clean bootstrap validate phase1-generate phase1-ingest phase2-ge-check
 
 PYTHON ?= $(shell if [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
 PIP := $(PYTHON) -m pip
@@ -16,6 +16,7 @@ help:
 	@echo "  make dbt-debug         - Test dbt connection"
 	@echo "  make phase1-generate   - Generate synthetic promotions payloads"
 	@echo "  make phase1-ingest     - Ingest raw churn/promotions/billing into Bronze"
+	@echo "  make phase2-ge-check   - Run Silver Great Expectations checkpoint"
 
 install:
 	$(PIP) install --upgrade pip
@@ -27,7 +28,7 @@ install-dev:
 	$(PIP) install -r requirements-dev.txt
 
 lint:
-	$(PYTHON) -m pylint src/ --disable=C0111,C0103,C0301,C0413,W0718,R0914,R0911
+	$(PYTHON) -m pylint src/ --disable=C0111,C0103,C0301,C0413,W0718,R0914,R0911,W0212
 	$(PYTHON) -m flake8 src tests --max-line-length=100 --extend-ignore=E501,E402
 	$(PYTHON) -m black src tests --line-length=100 --check
 
@@ -57,5 +58,8 @@ phase1-generate:
 
 phase1-ingest:
 	$(PYTHON) src/scripts/run_bronze_ingest.py --airbyte-enabled
+
+phase2-ge-check:
+	$(PYTHON) src/scripts/run_silver_quality_checkpoint.py
 
 .DEFAULT_GOAL := help

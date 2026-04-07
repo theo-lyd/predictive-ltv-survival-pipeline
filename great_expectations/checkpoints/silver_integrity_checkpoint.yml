@@ -1,0 +1,18 @@
+name: silver_integrity_checkpoint
+config_version: 1.0
+class_name: Checkpoint
+run_name_template: "%Y%m%d-%H%M%S-silver-integrity"
+expectation_suite_name: silver_integrity_suite
+validations:
+  - batch_request:
+      datasource_name: bronze_source
+      data_asset_name: silver_integrity_asset
+      options: {}
+    expectation_suite_name: silver_integrity_suite
+action_list:
+  - name: store_validation_result
+    action:
+      class_name: StoreValidationResultAction
+  - name: store_evaluation_params
+    action:
+      class_name: StoreEvaluationParametersAction
