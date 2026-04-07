@@ -10,6 +10,18 @@ from datetime import datetime, timedelta
 from statistics import mean, pstdev
 from typing import Any
 
+try:
+    from airflow.models import Variable
+except ModuleNotFoundError:
+
+    class Variable:  # type: ignore[override]
+        """Fallback Variable shim for non-Airflow test environments."""
+
+        @staticmethod
+        def get(_key: str, default_var: Any = None):
+            return default_var
+
+
 from config.phase_4_batch_4_monte_carlo_config import (
     FRESHNESS_MONITORS,
     VOLUME_MONITORS,
@@ -63,30 +75,31 @@ def _detect_anomalies(values: list[float], z_threshold: float) -> list[int]:
 
 def learn_monitor_thresholds(**context) -> dict[str, Any]:
     """Compute adaptive threshold suggestions from monitor metric history."""
-    from hooks.monte_carlo_hook import MonteCarloHook
-
     if not ANOMALY_LEARNING_CONFIG["enabled"]:
         return {"status": "skipped", "reason": "anomaly learning disabled"}
 
-    hook = MonteCarloHook()
     lookback_days = ANOMALY_LEARNING_CONFIG["lookback_days"]
     start_time = datetime.utcnow() - timedelta(days=lookback_days)
     end_time = datetime.utcnow()
 
     monitor_keys = list(VOLUME_MONITORS.keys()) + list(FRESHNESS_MONITORS.keys())
     monitor_keys = monitor_keys[: ANOMALY_LEARNING_CONFIG["max_monitors_per_run"]]
+    monitor_ids: dict[str, str] = {}
+    for monitor_key in monitor_keys:
+        monitor_var_name = f"MC_MONITOR_ID_{monitor_key.upper()}"
+        monitor_id = Variable.get(monitor_var_name, default_var="")
+        if monitor_id:
+            monitor_ids[monitor_key] = monitor_id
 
     suggestions: list[ThresholdSuggestion] = []
     anomalies: dict[str, list[int]] = {}
 
-    for monitor_key in monitor_keys:
-        # This assumes monitor IDs are stored in Airflow Variables with pattern MC_MONITOR_ID_<KEY>
-        monitor_var_name = f"MC_MONITOR_ID_{monitor_key.upper()}"
-        from airflow.models import Variable
+    if monitor_ids:
+        from hooks.monte_carlo_hook import MonteCarloHook
 
-        monitor_id = Variable.get(monitor_var_name, default_var="")
-        if not monitor_id:
-            continue
+        hook = MonteCarloHook()
+
+    for monitor_key, monitor_id in monitor_ids.items():
 
         try:
             metrics = hook.get_monitor_metrics(

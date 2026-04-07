@@ -103,7 +103,10 @@ def _llm_summary(snapshot: dict[str, Any], obs: dict[str, Any]) -> dict[str, Any
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": "You produce grounded business summaries for executives."},
+            {
+                "role": "system",
+                "content": "You produce grounded business summaries for executives.",
+            },
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.2,
@@ -149,10 +152,13 @@ def _llm_summary(snapshot: dict[str, Any], obs: dict[str, Any]) -> dict[str, Any
 def generate_daily_ai_summary(**context) -> dict[str, Any]:
     """Generate and persist daily executive summary from latest data snapshot."""
     ti = context["task_instance"]
-    snapshot = ti.xcom_pull(
-        key="batch_5_observability_snapshot",
-        task_ids="phase_5_observability.collect_observability_snapshot",
-    ) or {}
+    snapshot = (
+        ti.xcom_pull(
+            key="batch_5_observability_snapshot",
+            task_ids="phase_5_observability.collect_observability_snapshot",
+        )
+        or {}
+    )
 
     obs = _load_metric_snapshot()
     summary = _llm_summary(snapshot, obs)

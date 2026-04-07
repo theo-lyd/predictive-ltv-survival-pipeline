@@ -22,7 +22,7 @@ class MonteCarloAlertHandler:
     def __init__(self, slack_client=None):
         """
         Initialize alert handler.
-        
+
         Args:
             slack_client: Optional pre-configured Slack client (for testing)
         """
@@ -32,9 +32,7 @@ class MonteCarloAlertHandler:
     def _initialize_channels(self):
         """Initialize notification channels from Airflow variables."""
         try:
-            self.slack_channel_alerts = Variable.get(
-                "MC_SLACK_CHANNEL_ALERTS", "#data-alerts"
-            )
+            self.slack_channel_alerts = Variable.get("MC_SLACK_CHANNEL_ALERTS", "#data-alerts")
             self.slack_channel_critical = Variable.get(
                 "MC_SLACK_CHANNEL_CRITICAL", "#data-critical"
             )
@@ -57,16 +55,16 @@ class MonteCarloAlertHandler:
     ) -> None:
         """
         Route incident to appropriate notification channels based on severity and layer.
-        
+
         Args:
             incident: Incident dictionary from Monte Carlo API
             layer: Pipeline layer (bronze, silver, gold)
-        
+
         Raises:
             AirflowException: If incident is CRITICAL severity
         """
         severity = incident.get("severity", "MEDIUM").upper()
-        
+
         logger.info(
             f"Routing {layer} incident {incident.get('id')}: "
             f"severity={severity}, table={incident.get('table')}"
@@ -91,7 +89,7 @@ class MonteCarloAlertHandler:
         """Send incident notification to Slack."""
         try:
             from airflow.providers.slack.operators.slack_webhook import SlackWebhookOperator
-            
+
             message = self._format_incident_message(incident, layer, severity)
             channel = self._select_channel(severity)
             incident_id = str(incident.get("id", "unknown")).replace("-", "_")
@@ -122,7 +120,7 @@ class MonteCarloAlertHandler:
     def _format_incident_message(self, incident: Dict, layer: str, severity: str) -> str:
         """Format incident as Slack message."""
         message = f"""
-🚨 *Data Quality Alert - {severity}* 
+🚨 *Data Quality Alert - {severity}*
 
 *Layer*: {layer.upper()}
 *Table*: {incident.get('table', 'Unknown')}
@@ -137,7 +135,7 @@ class MonteCarloAlertHandler:
 • Investigate upstream data source
 • Resolve when root cause is identified
         """.strip()
-        
+
         return message
 
     def _escalate_incident(self, incident: Dict, layer: str) -> None:
@@ -148,7 +146,7 @@ class MonteCarloAlertHandler:
                 return
 
             import requests
-            
+
             pagerduty_payload = {
                 "routing_key": self.pagerduty_key,
                 "event_action": "trigger",
@@ -192,26 +190,26 @@ class MonteCarloAlertHandler:
     def check_layer_health(self, hook, layer: str, fail_on_critical: bool = True) -> Dict:
         """
         Check Monte Carlo health for all tables in a given layer.
-        
+
         Args:
             hook: MonteCarloHook instance
             layer: Pipeline layer (bronze, silver, gold)
             fail_on_critical: If True, raise exception on CRITICAL incidents
-            
+
         Returns:
             Dictionary with layer health status and incidents
-            
+
         Raises:
             AirflowException: If critical incidents found and fail_on_critical=True
         """
         from config.phase_4_batch_4_monte_carlo_config import VOLUME_MONITORS
-        
+
         layer_tables = {
             name: config["table_name"]
             for name, config in VOLUME_MONITORS.items()
             if name.startswith(layer)
         }
-        
+
         health_status = {
             "layer": layer,
             "timestamp": datetime.utcnow().isoformat(),
@@ -221,13 +219,13 @@ class MonteCarloAlertHandler:
         }
 
         critical_found = False
-        
+
         for table_short_name, table_full_name in layer_tables.items():
             try:
                 health = hook.get_asset_health(table_full_name, include_incidents=True)
                 status = health.get("health", {}).get("overallStatus", "UNKNOWN")
                 incidents = health.get("incidents", [])
-                
+
                 table_health = {
                     "table": table_full_name,
                     "status": status,
@@ -237,18 +235,22 @@ class MonteCarloAlertHandler:
 
                 for incident in incidents:
                     incident_severity = incident.get("severity", "MEDIUM")
-                    table_health["incidents"].append({
-                        "id": incident.get("id"),
-                        "type": incident.get("type"),
-                        "severity": incident_severity,
-                    })
-                    
+                    table_health["incidents"].append(
+                        {
+                            "id": incident.get("id"),
+                            "type": incident.get("type"),
+                            "severity": incident_severity,
+                        }
+                    )
+
                     if incident_severity == "CRITICAL":
                         critical_found = True
-                        health_status["critical_incidents"].append({
-                            "table": table_full_name,
-                            "incident": incident,
-                        })
+                        health_status["critical_incidents"].append(
+                            {
+                                "table": table_full_name,
+                                "incident": incident,
+                            }
+                        )
 
                     # Route each incident without raising inside the per-table processing loop.
                     self.route_incident(incident, layer, raise_on_critical=False)
@@ -267,9 +269,7 @@ class MonteCarloAlertHandler:
         # Determine overall status
         if critical_found:
             health_status["overall_status"] = "critical"
-        elif any(
-            t.get("status") == "BAD" for t in health_status["tables"].values()
-        ):
+        elif any(t.get("status") == "BAD" for t in health_status["tables"].values()):
             health_status["overall_status"] = "degraded"
         elif health_status["overall_status"] != "check_failed":
             health_status["overall_status"] = "healthy"
@@ -293,18 +293,18 @@ class MonteCarloAlertHandler:
     ) -> List[Dict]:
         """
         Get all incidents for tables in a layer.
-        
+
         Args:
             hook: MonteCarloHook instance
             layer: Pipeline layer (bronze, silver, gold)
             status: Filter by status (OPEN, RESOLVED, MUTED)
             include_resolved_after: Include resolved incidents from last N minutes
-            
+
         Returns:
             List of incident dictionaries
         """
         from config.phase_4_batch_4_monte_carlo_config import VOLUME_MONITORS
-        
+
         layer_tables = [
             config["table_name"]
             for name, config in VOLUME_MONITORS.items()
@@ -326,17 +326,15 @@ class IncidentResponseHandler:
     """Handles incident response and remediation workflows."""
 
     @staticmethod
-    def resolve_volume_incident(
-        hook, incident_id: str, remediation_note: str
-    ) -> Dict[str, Any]:
+    def resolve_volume_incident(hook, incident_id: str, remediation_note: str) -> Dict[str, Any]:
         """
         Resolve a volume anomaly incident.
-        
+
         Args:
             hook: MonteCarloHook instance
             incident_id: Unique incident identifier
             remediation_note: Description of remediation action taken
-            
+
         Returns:
             Resolution status
         """
@@ -351,11 +349,11 @@ class IncidentResponseHandler:
     def get_incident_context(hook, incident_id: str) -> Dict[str, Any]:
         """
         Get full context for an incident (metrics, historical trends, etc.).
-        
+
         Args:
             hook: MonteCarloHook instance
             incident_id: Unique incident identifier
-            
+
         Returns:
             Incident context with metrics
         """
@@ -371,34 +369,35 @@ class IncidentResponseHandler:
 def create_mc_health_check_task(layer: str, fail_on_critical: bool = True):
     """
     Create a health check task for a given layer.
-    
+
     This factory function creates a task that checks Monte Carlo health
     for all tables in a layer and optionally fails if critical incidents exist.
-    
+
     Args:
         layer: Pipeline layer (bronze, silver, gold)
         fail_on_critical: If True, task fails on critical incidents
-        
+
     Returns:
         Python callable for use with PythonOperator
     """
+
     def health_check_task(**context):
         from hooks.monte_carlo_hook import MonteCarloHook
-        
+
         hook = MonteCarloHook()
         handler = MonteCarloAlertHandler()
-        
+
         health = handler.check_layer_health(
             hook,
             layer=layer,
             fail_on_critical=fail_on_critical,
         )
-        
+
         context["task_instance"].xcom_push(
             key=f"mc_health_{layer}",
             value=health,
         )
-        
+
         return health
 
     return health_check_task

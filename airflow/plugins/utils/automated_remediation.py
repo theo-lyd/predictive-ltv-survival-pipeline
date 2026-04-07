@@ -6,7 +6,17 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from airflow.models import Variable
+try:
+    from airflow.models import Variable
+except ModuleNotFoundError:
+
+    class Variable:  # type: ignore[override]
+        """Fallback Variable shim for non-Airflow test environments."""
+
+        @staticmethod
+        def get(_key: str, default_var: Any = None):
+            return default_var
+
 
 from config.phase_4_batch_5_observability_config import (
     REMEDIATION_CONFIG,
@@ -48,8 +58,6 @@ def _build_recommendation(incident: dict[str, Any], layer: str) -> dict[str, str
 
 def run_automated_remediation(**context) -> dict[str, Any]:
     """Apply configured remediation actions for incidents captured in MC health tasks."""
-    from hooks.monte_carlo_hook import MonteCarloHook
-
     ti = context["task_instance"]
 
     layer_health = {
@@ -65,7 +73,11 @@ def run_automated_remediation(**context) -> dict[str, Any]:
                 incidents.append((layer, incident))
 
     incidents = incidents[: REMEDIATION_CONFIG["max_incidents_per_run"]]
-    hook = MonteCarloHook()
+    hook = None
+    if incidents:
+        from hooks.monte_carlo_hook import MonteCarloHook
+
+        hook = MonteCarloHook()
 
     resolved = []
     recommendations = []
@@ -97,7 +109,9 @@ def run_automated_remediation(**context) -> dict[str, Any]:
             )
             try:
                 resolution = hook.resolve_incident(incident_id=incident_id, resolution_note=note)
-                resolved.append({"incident_id": incident_id, "resolution": resolution, "layer": layer})
+                resolved.append(
+                    {"incident_id": incident_id, "resolution": resolution, "layer": layer}
+                )
             except Exception as exc:
                 recommendations.append(
                     {

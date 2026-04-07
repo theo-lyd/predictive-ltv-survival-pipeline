@@ -9,7 +9,18 @@ from datetime import datetime
 from typing import Any
 
 import requests
-from airflow.models import Variable
+
+try:
+    from airflow.models import Variable
+except ModuleNotFoundError:
+
+    class Variable:  # type: ignore[override]
+        """Fallback Variable shim for non-Airflow test environments."""
+
+        @staticmethod
+        def get(_key: str, default_var: Any = None):
+            return default_var
+
 
 from config.phase_4_batch_5_observability_config import DASHBOARD_CONFIG
 
@@ -81,7 +92,9 @@ def publish_grafana_dashboard(**context) -> dict[str, Any]:
         return {"status": "skipped", "reason": "grafana disabled"}
 
     ti = context["task_instance"]
-    snapshot = ti.xcom_pull(key="batch_5_observability_snapshot", task_ids="collect_observability_snapshot")
+    snapshot = ti.xcom_pull(
+        key="batch_5_observability_snapshot", task_ids="collect_observability_snapshot"
+    )
     snapshot = snapshot or {}
     summary = snapshot.get("summary", {})
 
@@ -153,7 +166,9 @@ def publish_datadog_metrics(**context) -> dict[str, Any]:
         return {"status": "skipped", "reason": "datadog disabled"}
 
     ti = context["task_instance"]
-    snapshot = ti.xcom_pull(key="batch_5_observability_snapshot", task_ids="collect_observability_snapshot")
+    snapshot = ti.xcom_pull(
+        key="batch_5_observability_snapshot", task_ids="collect_observability_snapshot"
+    )
     snapshot = snapshot or {}
     summary = snapshot.get("summary", {})
 

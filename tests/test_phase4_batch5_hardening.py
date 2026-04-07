@@ -15,6 +15,8 @@ if str(PLUGINS_ROOT) not in sys.path:
     sys.path.insert(0, str(PLUGINS_ROOT))
 
 from utils.anomaly_learning import _detect_anomalies, learn_monitor_thresholds
+import utils.anomaly_learning as anomaly_learning_module
+import utils.observability_dashboards as observability_dashboards_module
 from utils.automated_remediation import run_automated_remediation
 from utils.observability_dashboards import (
     collect_observability_snapshot,
@@ -91,9 +93,11 @@ def test_publish_datadog_metrics_without_api_key(monkeypatch):
         }
     )
 
-    from airflow.models import Variable
-
-    monkeypatch.setattr(Variable, "get", staticmethod(lambda *args, **kwargs: ""))
+    monkeypatch.setattr(
+        observability_dashboards_module.Variable,
+        "get",
+        staticmethod(lambda *args, **kwargs: ""),
+    )
 
     result = publish_datadog_metrics(task_instance=ti)
     assert result["status"] == "not_sent"
@@ -118,10 +122,13 @@ def test_run_automated_remediation_with_no_incidents():
 
 
 def test_learn_monitor_thresholds_handles_empty_monitor_variables(monkeypatch, tmp_path):
-    from airflow.models import Variable
     from config.phase_4_batch_5_observability_config import ANOMALY_LEARNING_CONFIG
 
-    monkeypatch.setattr(Variable, "get", staticmethod(lambda *args, **kwargs: ""))
+    monkeypatch.setattr(
+        anomaly_learning_module.Variable,
+        "get",
+        staticmethod(lambda *args, **kwargs: ""),
+    )
 
     output_path = tmp_path / "monitor-thresholds.json"
     monkeypatch.setitem(

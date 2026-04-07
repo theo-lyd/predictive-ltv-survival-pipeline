@@ -10,13 +10,27 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime, timedelta
-from typing import Any, Callable
-from urllib.parse import urlencode
+from typing import Any
 
 import requests
-from airflow.exceptions import AirflowException
-from airflow.models import Variable
-from airflow.utils.context import Context
+
+try:
+    from airflow.exceptions import AirflowException
+    from airflow.models import Variable
+    from airflow.utils.context import Context
+except ModuleNotFoundError:
+
+    class AirflowException(Exception):
+        """Fallback exception when Airflow is not installed."""
+
+    class Variable:  # type: ignore[override]
+        """Fallback Variable shim for non-Airflow test environments."""
+
+        @staticmethod
+        def get(_key: str, default_var: Any = None):
+            return default_var
+
+    Context = dict[str, Any]
 
 
 logger = logging.getLogger(__name__)
@@ -25,6 +39,7 @@ logger = logging.getLogger(__name__)
 # ============================================================================
 # Slack Notifications
 # ============================================================================
+
 
 class SlackNotifier:
     """Sends task failure and status notifications to Slack."""
@@ -201,6 +216,7 @@ class SlackNotifier:
 # Callback Functions (for use in DAG task definitions)
 # ============================================================================
 
+
 def on_failure_callback(context: Context) -> None:
     """
     Callback function for task failure.
@@ -211,7 +227,6 @@ def on_failure_callback(context: Context) -> None:
     :param context: Airflow task context
     """
     task_instance = context["task_instance"]
-    exception = context.get("exception", "Unknown")
 
     logger.error(
         f"Task {task_instance.task_id} failed on attempt {task_instance.try_number}",
@@ -232,7 +247,6 @@ def on_retry_callback(context: Context) -> None:
     :param context: Airflow task context
     """
     task_instance = context["task_instance"]
-    exception = context.get("exception", "Unknown")
 
     logger.warning(
         f"Task {task_instance.task_id} failed; retrying (attempt {task_instance.try_number})"
@@ -262,6 +276,7 @@ def on_success_callback(context: Context) -> None:
 # ============================================================================
 # Error Aggregation & Recovery
 # ============================================================================
+
 
 class ErrorAggregator:
     """Collects and aggregates errors from multiple tasks for root cause analysis."""
@@ -326,6 +341,7 @@ class ErrorAggregator:
 # Recovery Patterns
 # ============================================================================
 
+
 def skip_on_failure(exception: Exception) -> bool:
     """
     Determine if task should be skipped (not cause DAG to fail).
@@ -367,7 +383,7 @@ def retry_with_backoff(
     :return: Delay as timedelta
     """
     delay_seconds = min(
-        base_delay_seconds * (2 ** attempt),
+        base_delay_seconds * (2**attempt),
         max_delay_seconds,
     )
     return timedelta(seconds=delay_seconds)
@@ -421,6 +437,7 @@ def create_task_config_with_resilience(
 # ============================================================================
 # Logging Utilities
 # ============================================================================
+
 
 def log_task_start(task_id: str, **kwargs: Any) -> None:
     """Log task start with context."""
