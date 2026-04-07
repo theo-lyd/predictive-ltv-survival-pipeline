@@ -57,15 +57,16 @@ install-dev:
 
 lock-deps:
 	$(PIP) install pip-tools
-	$(PYTHON) -m piptools compile requirements.txt --output-file requirements-lock.txt
-	$(PYTHON) -m piptools compile requirements-dev.txt --output-file requirements-dev-lock.txt
+	$(PYTHON) -m piptools compile --no-strip-extras --no-header requirements.txt --output-file requirements-lock.txt
+	$(PYTHON) -m piptools compile --no-strip-extras --no-header requirements-dev.txt --output-file requirements-dev-lock.txt
 
 lock-check:
 	$(PIP) install pip-tools
-	$(PYTHON) -m piptools compile requirements.txt --output-file /tmp/requirements-lock.txt
-	$(PYTHON) -m piptools compile requirements-dev.txt --output-file /tmp/requirements-dev-lock.txt
-	diff -u requirements-lock.txt /tmp/requirements-lock.txt
-	diff -u requirements-dev-lock.txt /tmp/requirements-dev-lock.txt
+	$(PYTHON) -m piptools compile --no-strip-extras --no-header requirements.txt --output-file requirements-lock.check.txt
+	$(PYTHON) -m piptools compile --no-strip-extras --no-header requirements-dev.txt --output-file requirements-dev-lock.check.txt
+	diff -u requirements-lock.txt requirements-lock.check.txt
+	diff -u requirements-dev-lock.txt requirements-dev-lock.check.txt
+	rm -f requirements-lock.check.txt requirements-dev-lock.check.txt
 
 lint:
 	$(PYTHON) -m pylint src/ --disable=C0111,C0103,C0301,C0413,W0718,R0914,R0911,W0212

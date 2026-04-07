@@ -76,10 +76,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pip-tools
-          python -m piptools compile requirements.txt --output-file /tmp/requirements-lock.txt
-          python -m piptools compile requirements-dev.txt --output-file /tmp/requirements-dev-lock.txt
-          diff -u requirements-lock.txt /tmp/requirements-lock.txt
-          diff -u requirements-dev-lock.txt /tmp/requirements-dev-lock.txt
+          python -m piptools compile --no-strip-extras --no-header requirements.txt --output-file requirements-lock.check.txt
+          python -m piptools compile --no-strip-extras --no-header requirements-dev.txt --output-file requirements-dev-lock.check.txt
+          diff -u requirements-lock.txt requirements-lock.check.txt
+          diff -u requirements-dev-lock.txt requirements-dev-lock.check.txt
+          rm -f requirements-lock.check.txt requirements-dev-lock.check.txt
 
       - name: Run pylint
         run: |
