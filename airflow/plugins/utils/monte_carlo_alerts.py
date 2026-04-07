@@ -200,7 +200,7 @@ class MonteCarloAlertHandler:
         Raises:
             AirflowException: If critical incidents found and fail_on_critical=True
         """
-        from airflow.config.phase_4_batch_4_monte_carlo_config import VOLUME_MONITORS
+        from config.phase_4_batch_4_monte_carlo_config import VOLUME_MONITORS
         
         layer_tables = {
             name: config["table_name"]
@@ -299,7 +299,7 @@ class MonteCarloAlertHandler:
         Returns:
             List of incident dictionaries
         """
-        from airflow.config.phase_4_batch_4_monte_carlo_config import VOLUME_MONITORS
+        from config.phase_4_batch_4_monte_carlo_config import VOLUME_MONITORS
         
         layer_tables = [
             config["table_name"]

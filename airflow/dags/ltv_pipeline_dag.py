@@ -43,7 +43,9 @@ from airflow.utils.task_group import TaskGroup
 
 # Import custom operators, sensors, and resilience utilities
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "plugins"))
+AIRFLOW_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, AIRFLOW_ROOT)
+sys.path.insert(0, os.path.join(AIRFLOW_ROOT, "plugins"))
 
 try:
     from operators.custom_operators import (
@@ -63,6 +65,13 @@ try:
         create_mc_health_check_task,
         MonteCarloAlertHandler,
     )
+    from utils.observability_dashboards import (
+        collect_observability_snapshot,
+        publish_grafana_dashboard,
+        publish_datadog_metrics,
+    )
+    from utils.automated_remediation import run_automated_remediation
+    from utils.anomaly_learning import learn_monitor_thresholds
 except ImportError as e:
     raise ImportError(
         f"Failed to import custom operators/utils. "
@@ -356,7 +365,68 @@ with DAG(
     )
 
     # ========================================================================
+    # Phase 5: Observability Dashboards, Runbooks, Remediation, Learning
+    # ========================================================================
+
+    with TaskGroup("phase_5_observability", tooltip="Publish dashboards and run incident automation") as phase_5:
+
+        collect_snapshot = PythonOperator(
+            task_id="collect_observability_snapshot",
+            python_callable=collect_observability_snapshot,
+            provide_context=True,
+            doc="""
+            Collect latest observability signals from Monte Carlo checks.
+
+            - Pulls Bronze/Silver/Gold health from XCom
+            - Creates summary counters for incidents and layer status
+            - Stores a normalized snapshot for downstream tasks
+            """,
+        )
+
+        publish_grafana = PythonOperator(
+            task_id="publish_grafana_dashboard",
+            python_callable=publish_grafana_dashboard,
+            provide_context=True,
+            doc="""Generate Grafana dashboard JSON artifact from latest snapshot.""",
+        )
+
+        publish_datadog = PythonOperator(
+            task_id="publish_datadog_metrics",
+            python_callable=publish_datadog_metrics,
+            provide_context=True,
+            doc="""Emit observability counters to Datadog when API key is configured.""",
+        )
+
+        automated_remediation = PythonOperator(
+            task_id="run_automated_remediation",
+            python_callable=run_automated_remediation,
+            provide_context=True,
+            doc="""
+            Run severity-based automated remediation workflows.
+
+            - Auto-resolve low-severity incidents
+            - Produce recommendations and escalation records
+            - Attach runbook and playbook references
+            """,
+        )
+
+        anomaly_learning = PythonOperator(
+            task_id="run_anomaly_learning",
+            python_callable=learn_monitor_thresholds,
+            provide_context=True,
+            doc="""
+            Learn adaptive thresholds from monitor history.
+
+            - Reads recent monitor metrics
+            - Detects statistical outliers using z-score
+            - Writes threshold suggestions for calibration
+            """,
+        )
+
+        collect_snapshot >> [publish_grafana, publish_datadog, automated_remediation, anomaly_learning]
+
+    # ========================================================================
     # Task Dependencies (Full Execution Chain with Resilience + MC Monitoring)
     # ========================================================================
 
-    start_pipeline >> phase_1 >> phase_2 >> mc_check_bronze >> phase_3 >> mc_check_silver >> phase_4 >> mc_check_gold >> end_pipeline
+    start_pipeline >> phase_1 >> phase_2 >> mc_check_bronze >> phase_3 >> mc_check_silver >> phase_4 >> mc_check_gold >> phase_5 >> end_pipeline
