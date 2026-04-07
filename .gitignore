@@ -211,6 +211,8 @@ target/
 dbt_packages/
 dbt_project.yml.bak
 logs/
+.artifacts/
+artifacts/
 .dbt-manifest.json
 .user.yml
 

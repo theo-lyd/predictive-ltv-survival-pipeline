@@ -15,7 +15,10 @@ if str(REPO_ROOT) not in sys.path:
 from streamlit_app.core.sla import (
     build_compliance_audit_artifact,
     build_sla_report,
+    get_compliance_audit_path,
+    get_integrity_manifest_path,
     load_sla_history,
+    write_integrity_manifest,
 )
 
 
@@ -29,6 +32,7 @@ def export_compliance_audit(
     output_path: Path,
     report_file: Path | None = None,
     history_file: Path | None = None,
+    integrity_output: Path | None = None,
 ) -> dict[str, Any]:
     report = _load_report(report_file)
     history = load_sla_history(history_file)
@@ -36,6 +40,8 @@ def export_compliance_audit(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(artifact, indent=2), encoding="utf-8")
+    if integrity_output is not None:
+        write_integrity_manifest([output_path], output_path=integrity_output)
     return artifact
 
 
@@ -44,7 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("logs/compliance_audit.json"),
+        default=get_compliance_audit_path(),
         help="Output path for compliance audit JSON",
     )
     parser.add_argument(
@@ -57,9 +63,20 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="Optional SLA history file path (JSONL)",
     )
+    parser.add_argument(
+        "--integrity-output",
+        type=Path,
+        default=get_integrity_manifest_path(),
+        help="Integrity manifest output path (JSON)",
+    )
     args = parser.parse_args(argv)
 
-    artifact = export_compliance_audit(args.output, args.report_file, args.history_file)
+    artifact = export_compliance_audit(
+        args.output,
+        report_file=args.report_file,
+        history_file=args.history_file,
+        integrity_output=args.integrity_output,
+    )
     print(
         json.dumps(
             {

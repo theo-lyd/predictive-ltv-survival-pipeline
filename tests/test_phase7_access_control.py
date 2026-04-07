@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from streamlit_app.core.auth import build_access_denied_message, get_visible_views, role_can_access
+from streamlit_app.core.auth import (
+    build_access_denied_message,
+    get_current_role,
+    get_visible_views,
+    role_can_access,
+)
 
 
 def test_executive_can_access_sensitive_views():
@@ -27,3 +32,13 @@ def test_denial_message_is_actionable():
     assert "SLA Compliance" in message
     assert "sla_operations" in message
     assert "Executive" in message
+
+
+def test_identity_claim_role_is_enforced(monkeypatch):
+    monkeypatch.setenv("APP_USER_ROLE", "Finance")
+    assert get_current_role() == "Finance"
+
+
+def test_missing_identity_claim_defaults_to_least_privilege(monkeypatch):
+    monkeypatch.delenv("APP_USER_ROLE", raising=False)
+    assert get_current_role() == "Sales Leadership"

@@ -55,15 +55,15 @@ install-dev:
 
 lint:
 	$(PYTHON) -m pylint src/ --disable=C0111,C0103,C0301,C0413,W0718,R0914,R0911,W0212
-	$(PYTHON) -m flake8 src tests --max-line-length=100 --extend-ignore=E501,E402
-	$(PYTHON) -m black src tests --line-length=100 --target-version=py310 --check
+	$(PYTHON) -m flake8 src tests streamlit_app --max-line-length=100 --extend-ignore=E501,E402
+	$(PYTHON) -m black src tests streamlit_app --line-length=100 --target-version=py310 --check
 
 format:
-	$(PYTHON) -m black src tests --line-length=100 --target-version=py310
-	$(PYTHON) -m isort src tests --profile black
+	$(PYTHON) -m black src tests streamlit_app --line-length=100 --target-version=py310
+	$(PYTHON) -m isort src tests streamlit_app --profile black
 
 test:
-	$(PYTHON) -m pytest tests -v --cov=src --cov-report=html
+	$(PYTHON) -m pytest tests -v --cov=src --cov=streamlit_app --cov-report=xml --cov-report=html --cov-report=term
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
@@ -113,26 +113,33 @@ ge-validate:
 
 # SLA monitoring
 sla-monitor:
+	SLA_ARTIFACTS_DIR=$${SLA_ARTIFACTS_DIR:-$$(pwd)/artifacts/sla} \
 	$(PYTHON) scripts/monitor_sla_compliance.py --strict
 
 actions-poll:
 	$(PYTHON) scripts/poll_workflow_runs.py --limit 10
 
 compliance-audit:
-	$(PYTHON) scripts/export_compliance_audit.py --output logs/compliance_audit.json
+	SLA_ARTIFACTS_DIR=$${SLA_ARTIFACTS_DIR:-$$(pwd)/artifacts/sla} \
+	$(PYTHON) scripts/export_compliance_audit.py
 
 phase7-latency:
 	$(PYTHON) scripts/validate_phase7_monitoring_latency.py
 
 phase7-recovery:
-	$(PYTHON) -m streamlit cache clear
-	$(PYTHON) scripts/monitor_sla_compliance.py --output logs/sla_report.json --history-file logs/sla_history.jsonl --audit-output logs/compliance_audit.json
-	$(PYTHON) scripts/export_compliance_audit.py --output logs/compliance_audit.json --report-file logs/sla_report.json --history-file logs/sla_history.jsonl
+	SLA_ARTIFACTS_DIR=$${SLA_ARTIFACTS_DIR:-$$(pwd)/artifacts/sla} $(PYTHON) -m streamlit cache clear
+	SLA_ARTIFACTS_DIR=$${SLA_ARTIFACTS_DIR:-$$(pwd)/artifacts/sla} \
+	$(PYTHON) scripts/monitor_sla_compliance.py --strict
+	SLA_ARTIFACTS_DIR=$${SLA_ARTIFACTS_DIR:-$$(pwd)/artifacts/sla} \
+	$(PYTHON) scripts/export_compliance_audit.py
 
 phase7-reprocess:
-	$(PYTHON) scripts/monitor_sla_compliance.py --output logs/sla_report.json --history-file logs/sla_history.jsonl --audit-output logs/compliance_audit.json
-	$(PYTHON) scripts/export_operational_snapshot.py --output logs/operational_snapshot.json --history-file logs/sla_history.jsonl
-	$(PYTHON) scripts/export_compliance_audit.py --output logs/compliance_audit.json --report-file logs/sla_report.json --history-file logs/sla_history.jsonl
+	SLA_ARTIFACTS_DIR=$${SLA_ARTIFACTS_DIR:-$$(pwd)/artifacts/sla} \
+	$(PYTHON) scripts/monitor_sla_compliance.py --strict
+	SLA_ARTIFACTS_DIR=$${SLA_ARTIFACTS_DIR:-$$(pwd)/artifacts/sla} \
+	$(PYTHON) scripts/export_operational_snapshot.py
+	SLA_ARTIFACTS_DIR=$${SLA_ARTIFACTS_DIR:-$$(pwd)/artifacts/sla} \
+	$(PYTHON) scripts/export_compliance_audit.py
 
 # Complete local CI pipeline
 ci-local: clean install-dev lint test dbt-parse dbt-test ge-validate

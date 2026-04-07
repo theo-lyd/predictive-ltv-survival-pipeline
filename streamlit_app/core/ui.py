@@ -8,6 +8,8 @@ import streamlit as st
 
 from streamlit_app.core.auth import (
     build_access_denied_message,
+    get_current_role,
+    get_identity_context,
     get_locked_views,
     get_visible_views,
     role_can_access,
@@ -21,7 +23,6 @@ from streamlit_app.core.data_access import (
 from streamlit_app.core.narrative import load_daily_summary, narrative_snapshot_timestamp
 
 
-ROLE_OPTIONS = ["Executive", "RevOps", "Finance", "Sales Leadership"]
 REGION_OPTIONS = ["All", "Unknown", "EU", "APAC", "North America", "EMEA"]
 TIER_OPTIONS = ["All", "Basic", "Pro", "Growth", "Enterprise"]
 
@@ -29,7 +30,14 @@ TIER_OPTIONS = ["All", "Basic", "Pro", "Growth", "Enterprise"]
 def render_sidebar_filters() -> dict[str, object]:
     st.sidebar.header("Global Filters")
 
-    role = st.sidebar.selectbox("Role View", ROLE_OPTIONS, key="global_role")
+    role = get_current_role()
+    identity = get_identity_context()
+    st.sidebar.caption("Identity-backed access")
+    st.sidebar.write(f"Role: {role}")
+    if identity.get("user_email"):
+        st.sidebar.write(f"User: {identity['user_email']}")
+    st.sidebar.write(f"Source: {identity['identity_source']}")
+
     region = st.sidebar.selectbox("Region", REGION_OPTIONS, key="global_region")
     product_tier = st.sidebar.selectbox("Product Tier", TIER_OPTIONS, key="global_product_tier")
     date_range = st.sidebar.date_input(
@@ -63,7 +71,9 @@ def render_access_summary(role: str) -> None:
 
 def render_access_denied(role: str | None, view_label: str, capability: str | None) -> None:
     st.error(build_access_denied_message(role, view_label, capability))
-    st.info("Select a permitted role from the sidebar or contact the repository owner for access.")
+    st.info(
+        "Identity claims do not grant this capability. Contact the repository owner for access."
+    )
 
 
 def require_view_access(role: str | None, view_label: str, capability: str | None) -> bool:

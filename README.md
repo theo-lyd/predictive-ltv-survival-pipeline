@@ -20,6 +20,10 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 12. [Implementation Scaffold Report](docs/12_implementation_scaffold_report.md)
 13. [Implementation Command Log](docs/13_implementation_command_log.md)
 
+### Governance & Security
+- [Contributing Guide](CONTRIBUTING.md) - Contribution standards, validation requirements, and PR expectations
+- [Security Policy](SECURITY.md) - Vulnerability reporting and response commitments
+
 ### Phase 0: Environment & Infrastructure Documentation
 - [Environment Setup Guide](ENVIRONMENT_SETUP.md) - Step-by-step new contributor onboarding
 - [System Architecture](ARCHITECTURE.md) - High-level design, Medallion layers, technology stack
@@ -97,3 +101,16 @@ Use authenticated polling in this container to avoid unauthenticated API rate li
 
 You can also use the Make target:
 - `make actions-poll`
+
+## Identity-Backed Access Model
+
+Role access for Streamlit pages now derives from identity claim environment variables instead of an interactive role selector.
+
+Required claim environment variable:
+- `APP_USER_ROLE` with one of: `Executive`, `RevOps`, `Finance`, `Sales Leadership`
+
+Optional identity metadata:
+- `APP_USER_EMAIL`
+- `APP_IDENTITY_SOURCE`
+
+If `APP_USER_ROLE` is missing or invalid, the app defaults to least privilege (`Sales Leadership`).

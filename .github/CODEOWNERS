@@ -1,0 +1,13 @@
+# Default code owner for all repository paths
+* @theo-lyd
+
+# CI/CD and governance ownership
+.github/workflows/ @theo-lyd
+.github/dependabot.yml @theo-lyd
+
+# Data platform and analytics ownership
+models/ @theo-lyd
+macros/ @theo-lyd
+src/ @theo-lyd
+streamlit_app/ @theo-lyd
+scripts/ @theo-lyd

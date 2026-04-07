@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,7 +25,32 @@ SLA_LAYER_WEIGHTS = {
     "Presentation": 0.10,
 }
 
-SLA_HISTORY_PATH = Path(__file__).resolve().parents[2] / "logs" / "sla_history.jsonl"
+DEFAULT_SLA_ARTIFACTS_DIR = Path(__file__).resolve().parents[2] / "logs"
+
+
+def get_sla_artifacts_dir() -> Path:
+    """Resolve durable SLA artifact directory from env with local fallback."""
+
+    configured = os.getenv("SLA_ARTIFACTS_DIR")
+    if configured:
+        return Path(configured)
+    return DEFAULT_SLA_ARTIFACTS_DIR
+
+
+def get_sla_history_path() -> Path:
+    return get_sla_artifacts_dir() / "sla_history.jsonl"
+
+
+def get_sla_report_path() -> Path:
+    return get_sla_artifacts_dir() / "sla_report.json"
+
+
+def get_compliance_audit_path() -> Path:
+    return get_sla_artifacts_dir() / "compliance_audit.json"
+
+
+def get_integrity_manifest_path() -> Path:
+    return get_sla_artifacts_dir() / "integrity_manifest.json"
 
 
 @dataclass(frozen=True)
@@ -47,6 +74,39 @@ def _utc_now(now: datetime | None = None) -> datetime:
     if now is not None:
         return now.astimezone(timezone.utc) if now.tzinfo else now.replace(tzinfo=timezone.utc)
     return datetime.now(timezone.utc)
+
+
+def file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(64 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def write_integrity_manifest(paths: list[Path], output_path: Path | None = None) -> Path:
+    """Write an integrity manifest containing sha256 checksums for generated artifacts."""
+
+    target_path = output_path or get_integrity_manifest_path()
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    manifest = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "artifacts": [],
+    }
+    for artifact in paths:
+        if not artifact.exists():
+            continue
+        manifest["artifacts"].append(
+            {
+                "path": str(artifact),
+                "size_bytes": artifact.stat().st_size,
+                "sha256": file_sha256(artifact),
+            }
+        )
+
+    target_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    return target_path
 
 
 def _parse_iso_timestamp(value: str | None) -> datetime | None:
@@ -269,7 +329,7 @@ def build_sla_report(
 def append_sla_history(report: dict[str, Any], history_path: Path | None = None) -> Path:
     """Append a compact snapshot to the local SLA history log."""
 
-    target_path = history_path or SLA_HISTORY_PATH
+    target_path = history_path or get_sla_history_path()
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
     with target_path.open("a", encoding="utf-8") as handle:
@@ -294,7 +354,7 @@ def append_sla_history(report: dict[str, Any], history_path: Path | None = None)
 def load_sla_history(history_path: Path | None = None) -> list[dict[str, Any]]:
     """Load SLA history records if a local or archived history file exists."""
 
-    candidate_paths = [history_path or SLA_HISTORY_PATH]
+    candidate_paths = [history_path or get_sla_history_path()]
     records: list[dict[str, Any]] = []
     for candidate in candidate_paths:
         if not candidate.exists():

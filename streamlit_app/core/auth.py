@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 
-DEFAULT_ROLE = "Executive"
+DEFAULT_ROLE = "Sales Leadership"
+IDENTITY_ROLE_ENV = "APP_USER_ROLE"
+IDENTITY_USER_ENV = "APP_USER_EMAIL"
+IDENTITY_SOURCE_ENV = "APP_IDENTITY_SOURCE"
 
 ROLE_CAPABILITIES: dict[str, set[str]] = {
     "Executive": {"executive_dashboard", "narrative_review", "sla_operations", "public_views"},
@@ -59,6 +63,24 @@ def normalize_role(role: str | None) -> str:
     if role in ROLE_CAPABILITIES:
         return role
     return DEFAULT_ROLE
+
+
+def get_identity_context() -> dict[str, str | None]:
+    """Return normalized identity context from environment-provided claims."""
+
+    claimed_role = os.getenv(IDENTITY_ROLE_ENV)
+    return {
+        "role": normalize_role(claimed_role),
+        "claimed_role": claimed_role,
+        "user_email": os.getenv(IDENTITY_USER_ENV),
+        "identity_source": os.getenv(IDENTITY_SOURCE_ENV, "env-claims"),
+    }
+
+
+def get_current_role() -> str:
+    """Resolve the active role from identity claims."""
+
+    return str(get_identity_context()["role"])
 
 
 def get_allowed_capabilities(role: str | None) -> set[str]:

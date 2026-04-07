@@ -11,7 +11,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from streamlit_app.core.sla import build_operational_snapshot, build_sla_report, load_sla_history
+from streamlit_app.core.sla import (
+    build_operational_snapshot,
+    build_sla_report,
+    get_sla_artifacts_dir,
+    load_sla_history,
+)
 
 
 def export_operational_snapshot(output_path: Path, history_file: Path | None = None) -> dict:
@@ -25,11 +30,13 @@ def export_operational_snapshot(output_path: Path, history_file: Path | None = N
 
 
 def main(argv: list[str] | None = None) -> int:
+    default_output = get_sla_artifacts_dir() / "operational_snapshot.json"
+
     parser = argparse.ArgumentParser(description="Export operational SLA snapshot")
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("logs/operational_snapshot.json"),
+        default=default_output,
         help="Output path for snapshot JSON",
     )
     parser.add_argument(
@@ -40,7 +47,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     snapshot = export_operational_snapshot(args.output, args.history_file)
-    print(json.dumps({"output": str(args.output), "history_runs": snapshot["history_run_count"]}, indent=2))
+    print(
+        json.dumps(
+            {"output": str(args.output), "history_runs": snapshot["history_run_count"]}, indent=2
+        )
+    )
     return 0
 
 

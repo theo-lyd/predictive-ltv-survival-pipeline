@@ -24,12 +24,12 @@ jobs:
         python-version: ["3.10"]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0  # Full history for slim CI state comparison
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
@@ -38,7 +38,7 @@ jobs:
         run: python -c "import sys; print(sys.version)"
 
       - name: Cache pip dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
@@ -46,7 +46,7 @@ jobs:
             ${{ runner.os }}-pip-
 
       - name: Cache dbt artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: target/
           key: ${{ runner.os }}-dbt-${{ github.sha }}
@@ -63,14 +63,12 @@ jobs:
       - name: Run pylint
         run: |
           python -m pylint src/ --disable=C0111,C0103,C0301,C0413,W0718,R0914,R0911,W0212 \
-            --exit-zero --output-format=text
-        continue-on-error: true
+            --output-format=text
 
       - name: Run flake8
         run: |
           python -m flake8 src tests streamlit_app --max-line-length=100 \
             --extend-ignore=E501,E402 --count --show-source
-        continue-on-error: true
 
       - name: Check code formatting with black
         run: python -m black src tests streamlit_app --line-length=100 --target-version=py310 --check
@@ -78,17 +76,16 @@ jobs:
       - name: Lint YAML configuration files
         run: |
           yamllint -d relaxed .github/workflows/ great_expectations/ dbt_project.yml \
-            profiles.yml 2>/dev/null || true
-        continue-on-error: true
+            profiles.yml
 
       - name: Security scanning with bandit
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
         run: |
-          bandit -r src streamlit_app -ll --exit-code 0 -f json -o bandit-report.json || true
-        continue-on-error: true
+          bandit -r src streamlit_app -ll -f json -o bandit-report.json
 
       - name: Check for vulnerable dependencies
-        run: pip-audit --skip-editable --desc || true
-        continue-on-error: true
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        run: pip-audit --skip-editable --desc
 
       - name: Run unit and integration tests with coverage
         run: |
@@ -97,7 +94,7 @@ jobs:
             --tb=short
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe # v5
         with:
           files: ./coverage.xml
           flags: unittests
@@ -106,7 +103,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: test-results
           path: htmlcov/
@@ -117,10 +114,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.10"
           cache: 'pip'
@@ -131,7 +128,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Cache dbt artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: target/
           key: ${{ runner.os }}-dbt-lint-${{ github.sha }}
@@ -155,12 +152,12 @@ jobs:
     needs: dbt-lint
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.10"
           cache: 'pip'
@@ -171,7 +168,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Cache dbt artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: target/
           key: ${{ runner.os }}-dbt-tests-${{ github.sha }}
@@ -204,10 +201,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.10"
           cache: 'pip'
@@ -218,16 +215,36 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Great Expectations checkpoint
-        run: |
-          python src/scripts/run_silver_quality_checkpoint.py || true
-        continue-on-error: true
+        continue-on-error: ${{ github.event_name == 'pull_request' }}
+        run: python src/scripts/run_silver_quality_checkpoint.py
 
       - name: Upload GE report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ge-validation-report
           path: great_expectations/uncommitted/validations/
+
+  phase7-latency:
+    name: Phase 7 Latency SLOs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run latency SLO validation
+        run: python scripts/validate_phase7_monitoring_latency.py
 
   # Code smells and maintainability
   code-metrics:
@@ -235,10 +252,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.10"
           cache: 'pip'
@@ -259,7 +276,7 @@ jobs:
 
       - name: Upload metrics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: code-metrics
           path: |
@@ -270,14 +287,16 @@ jobs:
   ci-status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [quality, dbt-lint, dbt-tests, data-quality, code-metrics]
+    needs: [quality, dbt-lint, dbt-tests, data-quality, phase7-latency, code-metrics]
     if: always()
     steps:
       - name: Check CI status
         run: |
           if [ "${{ needs.quality.result }}" != "success" ] || \
              [ "${{ needs.dbt-lint.result }}" != "success" ] || \
-             [ "${{ needs.dbt-tests.result }}" != "success" ]; then
+             [ "${{ needs.dbt-tests.result }}" != "success" ] || \
+             [ "${{ needs.data-quality.result }}" != "success" ] || \
+             [ "${{ needs.phase7-latency.result }}" != "success" ]; then
             echo "❌ CI pipeline failed. Review errors above."
             exit 1
           fi
