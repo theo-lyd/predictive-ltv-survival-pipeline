@@ -16,6 +16,19 @@ RAW_BILLING_PATH = REPO_ROOT / "data" / "raw" / "billing" / "billing_sync.csv"
 RAW_CHURN_PATH = REPO_ROOT / "data" / "raw" / "churn" / "baseline_churn.csv"
 PROMOTIONS_PATH = REPO_ROOT / "data" / "raw" / "promotions" / "promotions.parquet"
 
+GOLD_BILLING_CANDIDATES = [
+    REPO_ROOT / "data" / "gold" / "fct_billing.parquet",
+    REPO_ROOT / "data" / "gold" / "fct_billing.csv",
+]
+GOLD_CHURN_CANDIDATES = [
+    REPO_ROOT / "data" / "gold" / "fct_customer_ltv.parquet",
+    REPO_ROOT / "data" / "gold" / "fct_customer_ltv.csv",
+]
+GOLD_PROMOTIONS_CANDIDATES = [
+    REPO_ROOT / "data" / "gold" / "fct_discount_impact.parquet",
+    REPO_ROOT / "data" / "gold" / "fct_discount_impact.csv",
+]
+
 
 def _parse_amount(v: Any) -> float:
     if pd.isna(v):
@@ -38,12 +51,61 @@ class DashboardData:
     billing: pd.DataFrame
     churn: pd.DataFrame
     promotions: pd.DataFrame
+    source_layer: str = "raw-fallback"
+    snapshot_ts: float = 0.0
+
+
+def _read_table(path: Path) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame()
+    if path.suffix.lower() == ".csv":
+        return pd.read_csv(path)
+    if path.suffix.lower() == ".parquet":
+        return pd.read_parquet(path)
+    return pd.DataFrame()
+
+
+def _first_existing(paths: list[Path]) -> Path | None:
+    for path in paths:
+        if path.exists():
+            return path
+    return None
+
+
+def dashboard_snapshot_timestamp() -> float:
+    """Timestamp key for Streamlit cache invalidation.
+
+    Uses newest mtime from preferred Gold sources first, then raw fallback sources.
+    """
+    candidate_paths = [
+        _first_existing(GOLD_BILLING_CANDIDATES),
+        _first_existing(GOLD_CHURN_CANDIDATES),
+        _first_existing(GOLD_PROMOTIONS_CANDIDATES),
+        RAW_BILLING_PATH if RAW_BILLING_PATH.exists() else None,
+        RAW_CHURN_PATH if RAW_CHURN_PATH.exists() else None,
+        PROMOTIONS_PATH if PROMOTIONS_PATH.exists() else None,
+    ]
+    mtimes = [p.stat().st_mtime for p in candidate_paths if p is not None and p.exists()]
+    return max(mtimes) if mtimes else 0.0
 
 
 def load_dashboard_data() -> DashboardData:
-    billing = pd.read_csv(RAW_BILLING_PATH) if RAW_BILLING_PATH.exists() else pd.DataFrame()
-    churn = pd.read_csv(RAW_CHURN_PATH) if RAW_CHURN_PATH.exists() else pd.DataFrame()
-    promotions = pd.read_parquet(PROMOTIONS_PATH) if PROMOTIONS_PATH.exists() else pd.DataFrame()
+    gold_billing_path = _first_existing(GOLD_BILLING_CANDIDATES)
+    gold_churn_path = _first_existing(GOLD_CHURN_CANDIDATES)
+    gold_promotions_path = _first_existing(GOLD_PROMOTIONS_CANDIDATES)
+
+    use_gold = all([gold_billing_path, gold_churn_path, gold_promotions_path])
+
+    if use_gold:
+        billing = _read_table(gold_billing_path)
+        churn = _read_table(gold_churn_path)
+        promotions = _read_table(gold_promotions_path)
+        source_layer = "gold"
+    else:
+        billing = pd.read_csv(RAW_BILLING_PATH) if RAW_BILLING_PATH.exists() else pd.DataFrame()
+        churn = pd.read_csv(RAW_CHURN_PATH) if RAW_CHURN_PATH.exists() else pd.DataFrame()
+        promotions = pd.read_parquet(PROMOTIONS_PATH) if PROMOTIONS_PATH.exists() else pd.DataFrame()
+        source_layer = "raw-fallback"
 
     if not billing.empty:
         billing["invoice_date"] = pd.to_datetime(billing["invoice_date"], errors="coerce")
@@ -61,7 +123,13 @@ def load_dashboard_data() -> DashboardData:
             promotions["promotion_start_date"], errors="coerce"
         )
 
-    return DashboardData(billing=billing, churn=churn, promotions=promotions)
+    return DashboardData(
+        billing=billing,
+        churn=churn,
+        promotions=promotions,
+        source_layer=source_layer,
+        snapshot_ts=dashboard_snapshot_timestamp(),
+    )
 
 
 def _normalize_date_range(date_range: Any) -> tuple[pd.Timestamp | None, pd.Timestamp | None]:
@@ -122,7 +190,13 @@ def apply_global_filters(
     if not promotions.empty and not churn.empty and "customer_id" in promotions.columns:
         promotions = promotions[promotions["customer_id"].isin(churn["customer_id"].unique())]
 
-    return DashboardData(billing=billing, churn=churn, promotions=promotions)
+    return DashboardData(
+        billing=billing,
+        churn=churn,
+        promotions=promotions,
+        source_layer=data.source_layer,
+        snapshot_ts=data.snapshot_ts,
+    )
 
 
 def build_kpis(data: DashboardData) -> dict[str, float]:

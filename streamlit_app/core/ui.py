@@ -6,6 +6,14 @@ from datetime import date
 
 import streamlit as st
 
+from streamlit_app.core.data_access import (
+    DashboardData,
+    apply_global_filters,
+    dashboard_snapshot_timestamp,
+    load_dashboard_data,
+)
+from streamlit_app.core.narrative import load_daily_summary, narrative_snapshot_timestamp
+
 
 ROLE_OPTIONS = ["Executive", "RevOps", "Finance", "Sales Leadership"]
 REGION_OPTIONS = ["All", "Unknown", "EU", "APAC", "North America", "EMEA"]
@@ -38,3 +46,49 @@ def render_kpi_ribbon(kpis: dict[str, float]) -> None:
     c2.metric("LTV/CAC", f"{kpis['ltv_cac']:.2f}x")
     c3.metric("Churn", f"{kpis['churn_rate'] * 100:.1f}%")
     c4.metric("Discount Efficiency", f"{kpis['discount_efficiency']:.2f}")
+
+
+@st.cache_data(show_spinner=False)
+def cached_dashboard_data(snapshot_ts: float) -> DashboardData:
+    _ = snapshot_ts
+    return load_dashboard_data()
+
+
+def get_filtered_dashboard_data(filters: dict[str, object]) -> DashboardData:
+    return apply_global_filters(
+        cached_dashboard_data(dashboard_snapshot_timestamp()),
+        region=filters["region"],
+        product_tier=filters["product_tier"],
+        date_range=filters["date_range"],
+    )
+
+
+def render_data_provenance_badge(data: DashboardData) -> None:
+    if data.source_layer == "gold":
+        st.success(f"Data source: GOLD (snapshot_ts={data.snapshot_ts:.0f})")
+    else:
+        st.warning(f"Data source: RAW FALLBACK (snapshot_ts={data.snapshot_ts:.0f})")
+
+
+@st.cache_data(show_spinner=False)
+def cached_narrative_summary(summary_ts: float) -> dict:
+    _ = summary_ts
+    return load_daily_summary()
+
+
+def get_cached_narrative_summary() -> dict:
+    return cached_narrative_summary(narrative_snapshot_timestamp())
+
+
+def render_narrative_contract_warning(summary: dict, severity: str = "warning") -> None:
+    if summary.get("contract_valid", True):
+        return
+
+    message = (
+        "Narrative contract check failed; fallback summary is shown. "
+        f"Errors: {', '.join(summary.get('contract_errors', []))}"
+    )
+    if severity == "error":
+        st.error(message)
+        return
+    st.warning(message)

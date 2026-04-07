@@ -4,27 +4,27 @@ import streamlit as st
 
 from streamlit_app.core.charts import cohort_heatmap_figure, ltv_journey_sankey_figure, survival_comparison_figure
 from streamlit_app.core.data_access import (
-    apply_global_filters,
     build_kpis,
     cohort_matrix,
-    load_dashboard_data,
     sankey_flows,
     survival_curves,
 )
-from streamlit_app.core.narrative import load_daily_summary
 from streamlit_app.core.simulator import simulate_nrr_impact
-from streamlit_app.core.ui import render_kpi_ribbon, render_sidebar_filters
+from streamlit_app.core.ui import (
+    get_cached_narrative_summary,
+    get_filtered_dashboard_data,
+    render_data_provenance_badge,
+    render_narrative_contract_warning,
+    render_kpi_ribbon,
+    render_sidebar_filters,
+)
 
 
 st.title("Executive Flight Deck")
 filters = render_sidebar_filters()
 
-data = apply_global_filters(
-    load_dashboard_data(),
-    region=filters["region"],
-    product_tier=filters["product_tier"],
-    date_range=filters["date_range"],
-)
+data = get_filtered_dashboard_data(filters)
+render_data_provenance_badge(data)
 
 kpis = build_kpis(data)
 render_kpi_ribbon(kpis)
@@ -49,7 +49,8 @@ projected_nrr = simulate_nrr_impact(kpis["nrr"], discount_pct, elasticity)
 st.metric("Projected NRR", f"{projected_nrr * 100:.1f}%", delta=f"{(projected_nrr - kpis['nrr']) * 100:.1f}pp")
 
 st.subheader("AI Narrative Panel")
-summary = load_daily_summary()
+summary = get_cached_narrative_summary()
+render_narrative_contract_warning(summary, severity="warning")
 st.write(f"**Headline:** {summary.get('headline', 'N/A')}")
 for insight in summary.get("insights", []):
     st.write(f"- {insight}")

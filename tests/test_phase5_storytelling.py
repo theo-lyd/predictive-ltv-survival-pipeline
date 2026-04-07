@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import json
 import sys
+import types
 from pathlib import Path
 
 
@@ -13,12 +13,31 @@ if str(REPO_ROOT / "airflow") not in sys.path:
 if str(REPO_ROOT / "airflow" / "plugins") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "airflow" / "plugins"))
 
+if "airflow.exceptions" not in sys.modules:
+    airflow_exceptions = types.ModuleType("airflow.exceptions")
+
+    class AirflowException(Exception):
+        pass
+
+    airflow_exceptions.AirflowException = AirflowException
+    sys.modules["airflow.exceptions"] = airflow_exceptions
+
 import pandas as pd
 
-from streamlit_app.core.data_access import DashboardData, apply_global_filters, build_kpis, load_dashboard_data
-from streamlit_app.core.narrative import load_daily_summary
+from streamlit_app.core.data_access import (
+    DashboardData,
+    apply_global_filters,
+    build_kpis,
+    dashboard_snapshot_timestamp,
+    load_dashboard_data,
+)
+from streamlit_app.core.narrative import (
+    _fallback_summary,
+    load_daily_summary,
+    narrative_snapshot_timestamp,
+    validate_narrative_contract,
+)
 from streamlit_app.core.simulator import simulate_nrr_impact
-from utils.executive_storytelling import _fallback_summary
 
 
 def test_simulator_monotonic_for_elasticity():
@@ -35,7 +54,7 @@ def test_kpis_return_expected_keys():
 
 
 def test_fallback_summary_has_required_sections():
-    summary = _fallback_summary({"summary": {"healthy_layers": 3, "degraded_layers": 0}}, {"churn_rate": 0.05, "invoice_count": 10, "active_customers": 25})
+    summary = _fallback_summary()
     assert "headline" in summary
     assert len(summary["insights"]) >= 1
     assert len(summary["actions"]) >= 1
@@ -46,6 +65,8 @@ def test_narrative_loader_fallback_shape():
     assert "headline" in result
     assert "insights" in result
     assert "actions" in result
+    assert "contract_valid" in result
+    assert "contract_errors" in result
 
 
 def test_apply_global_filters_respects_date_range():
@@ -84,3 +105,20 @@ def test_apply_global_filters_respects_date_range():
     assert len(filtered.churn) == 1
     assert len(filtered.billing) == 1
     assert len(filtered.promotions) == 1
+
+
+def test_dashboard_data_has_provenance_and_snapshot_timestamp():
+    data = load_dashboard_data()
+    assert data.source_layer in {"gold", "raw-fallback"}
+    assert isinstance(data.snapshot_ts, float)
+    assert isinstance(dashboard_snapshot_timestamp(), float)
+
+
+def test_narrative_contract_validator_detects_missing_fields():
+    valid, errors = validate_narrative_contract({"headline": "x"})
+    assert valid is False
+    assert any(e.startswith("missing:") for e in errors)
+
+
+def test_narrative_snapshot_timestamp_type():
+    assert isinstance(narrative_snapshot_timestamp(), float)

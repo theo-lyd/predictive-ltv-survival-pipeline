@@ -18,10 +18,12 @@ from streamlit_app.core.charts import (
 from streamlit_app.core.data_access import (
     build_kpis,
     cohort_matrix,
+    dashboard_snapshot_timestamp,
     load_dashboard_data,
     sankey_flows,
     survival_curves,
 )
+from streamlit_app.core.narrative import narrative_snapshot_timestamp
 
 
 MAX_LOAD_SECONDS = 1.5
@@ -30,6 +32,8 @@ MAX_CHART_SECONDS = 2.0
 
 def main() -> int:
     t0 = time.perf_counter()
+    _ = dashboard_snapshot_timestamp()
+    _ = narrative_snapshot_timestamp()
     data = load_dashboard_data()
     _ = build_kpis(data)
     load_elapsed = time.perf_counter() - t0
