@@ -41,3 +41,9 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 - [Phase 3 Implementation Report](docs/PHASE_3_IMPLEMENTATION_REPORT.md) - Gold metrics, predictive models, and acceptance mapping
 - [Phase 3 Command Log](docs/PHASE_3_COMMAND_LOG.md) - Build, run, and validation command flow for advanced modeling
 - [Phase 3 Technical Note](docs/PHASE_3_TECHNICAL_NOTE.md) - Statistical assumptions and interpretation guidance
+
+### Phase 4: Orchestration & Observability Documentation (In Progress)
+- [Phase 4 Implementation Plan](docs/PHASE_4_IMPLEMENTATION_PLAN.md) - Strategic plan with 5-batch breakdown, acceptance criteria, risk mitigation
+
+### Audit & Corrections
+- [Audit Findings and Corrections](docs/AUDIT_FINDINGS_AND_CORRECTIONS.md) - Phase 1-3 audit report, high/medium severity findings, and applied corrections
