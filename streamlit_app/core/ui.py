@@ -6,7 +6,12 @@ from datetime import date
 
 import streamlit as st
 
-from streamlit_app.core.auth import build_access_denied_message, get_locked_views, get_visible_views, role_can_access
+from streamlit_app.core.auth import (
+    build_access_denied_message,
+    get_locked_views,
+    get_visible_views,
+    role_can_access,
+)
 from streamlit_app.core.data_access import (
     DashboardData,
     apply_global_filters,

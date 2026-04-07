@@ -89,7 +89,9 @@ def build_access_denied_message(role: str | None, view_label: str, capability: s
     if capability is None:
         return f"{view_label} is available to all roles."
 
-    allowed_roles = [name for name, capabilities in ROLE_CAPABILITIES.items() if capability in capabilities]
+    allowed_roles = [
+        name for name, capabilities in ROLE_CAPABILITIES.items() if capability in capabilities
+    ]
     allowed_text = ", ".join(allowed_roles)
     return (
         f"Access denied for role '{normalized_role}'. "

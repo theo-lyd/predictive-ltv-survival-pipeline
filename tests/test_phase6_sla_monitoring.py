@@ -12,7 +12,13 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from streamlit_app.core.data_access import DashboardData
-from streamlit_app.core.sla import append_sla_history, build_alert_payload, build_sla_report, load_sla_history, summarize_report
+from streamlit_app.core.sla import (
+    append_sla_history,
+    build_alert_payload,
+    build_sla_report,
+    load_sla_history,
+    summarize_report,
+)
 
 
 def _complete_dashboard_data() -> DashboardData:
@@ -62,8 +68,12 @@ def test_build_sla_report_passes_for_complete_fresh_data(monkeypatch):
         "contract_errors": [],
     }
 
-    monkeypatch.setattr("streamlit_app.core.sla.dashboard_snapshot_timestamp", lambda: now.timestamp() - 3600)
-    monkeypatch.setattr("streamlit_app.core.sla.narrative_snapshot_timestamp", lambda: now.timestamp() - 1800)
+    monkeypatch.setattr(
+        "streamlit_app.core.sla.dashboard_snapshot_timestamp", lambda: now.timestamp() - 3600
+    )
+    monkeypatch.setattr(
+        "streamlit_app.core.sla.narrative_snapshot_timestamp", lambda: now.timestamp() - 1800
+    )
 
     report = build_sla_report(dashboard_data=dashboard_data, narrative_summary=summary, now=now)
 
@@ -130,8 +140,12 @@ def test_fallback_snapshot_stays_quiet_when_fresh_and_complete(monkeypatch):
         "contract_errors": [],
     }
 
-    monkeypatch.setattr("streamlit_app.core.sla.dashboard_snapshot_timestamp", lambda: now.timestamp() - 5 * 3600)
-    monkeypatch.setattr("streamlit_app.core.sla.narrative_snapshot_timestamp", lambda: now.timestamp() - 2 * 3600)
+    monkeypatch.setattr(
+        "streamlit_app.core.sla.dashboard_snapshot_timestamp", lambda: now.timestamp() - 5 * 3600
+    )
+    monkeypatch.setattr(
+        "streamlit_app.core.sla.narrative_snapshot_timestamp", lambda: now.timestamp() - 2 * 3600
+    )
 
     report = build_sla_report(dashboard_data=dashboard_data, narrative_summary=summary, now=now)
 

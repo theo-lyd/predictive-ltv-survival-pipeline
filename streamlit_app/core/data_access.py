@@ -104,7 +104,9 @@ def load_dashboard_data() -> DashboardData:
     else:
         billing = pd.read_csv(RAW_BILLING_PATH) if RAW_BILLING_PATH.exists() else pd.DataFrame()
         churn = pd.read_csv(RAW_CHURN_PATH) if RAW_CHURN_PATH.exists() else pd.DataFrame()
-        promotions = pd.read_parquet(PROMOTIONS_PATH) if PROMOTIONS_PATH.exists() else pd.DataFrame()
+        promotions = (
+            pd.read_parquet(PROMOTIONS_PATH) if PROMOTIONS_PATH.exists() else pd.DataFrame()
+        )
         source_layer = "raw-fallback"
 
     if not billing.empty:
@@ -166,13 +168,18 @@ def apply_global_filters(
     if not churn.empty and start_date is not None and end_date is not None:
         churn = churn[
             (churn["signup_date"].fillna(pd.Timestamp.min) <= end_date)
-            & (
-                churn["churn_date"].fillna(pd.Timestamp.max) >= start_date
-            )
+            & (churn["churn_date"].fillna(pd.Timestamp.max) >= start_date)
         ]
 
-    if not billing.empty and start_date is not None and end_date is not None and "invoice_date" in billing.columns:
-        billing = billing[(billing["invoice_date"] >= start_date) & (billing["invoice_date"] <= end_date)]
+    if (
+        not billing.empty
+        and start_date is not None
+        and end_date is not None
+        and "invoice_date" in billing.columns
+    ):
+        billing = billing[
+            (billing["invoice_date"] >= start_date) & (billing["invoice_date"] <= end_date)
+        ]
 
     if (
         not promotions.empty
@@ -213,9 +220,13 @@ def build_kpis(data: DashboardData) -> dict[str, float]:
 
     expansion = 0.0
     if not data.promotions.empty and "discount_percent" in data.promotions.columns:
-        expansion = float((data.promotions["discount_percent"].clip(0, 100) / 100.0).mean() * starting_mrr * 0.08)
+        expansion = float(
+            (data.promotions["discount_percent"].clip(0, 100) / 100.0).mean() * starting_mrr * 0.08
+        )
 
-    lost_mrr = float(data.churn.loc[data.churn["churn_date"].notna(), "monthly_recurring_revenue"].sum())
+    lost_mrr = float(
+        data.churn.loc[data.churn["churn_date"].notna(), "monthly_recurring_revenue"].sum()
+    )
     nrr = (starting_mrr + expansion - lost_mrr) / starting_mrr if starting_mrr > 0 else 1.0
 
     avg_ltv = float(data.churn["monthly_recurring_revenue"].mean() * 18)
@@ -246,9 +257,7 @@ def cohort_matrix(data: DashboardData) -> pd.DataFrame:
     df["tenure_months"] = ((df["end_date"] - df["signup_date"]).dt.days / 30.0).clip(lower=0)
     df["tenure_bucket"] = (np.floor(df["tenure_months"]).astype(int)).clip(upper=24)
 
-    pivot = (
-        df.groupby(["cohort_month", "tenure_bucket"]).size().unstack(fill_value=0).sort_index()
-    )
+    pivot = df.groupby(["cohort_month", "tenure_bucket"]).size().unstack(fill_value=0).sort_index()
     cohort_sizes = df.groupby("cohort_month").size()
 
     for col in pivot.columns:

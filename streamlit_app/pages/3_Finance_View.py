@@ -4,10 +4,10 @@ import streamlit as st
 
 from streamlit_app.core.data_access import build_kpis
 from streamlit_app.core.ui import (
-	get_filtered_dashboard_data,
-	render_data_provenance_badge,
-	render_kpi_ribbon,
-	render_sidebar_filters,
+    get_filtered_dashboard_data,
+    render_data_provenance_badge,
+    render_kpi_ribbon,
+    render_sidebar_filters,
 )
 
 

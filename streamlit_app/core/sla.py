@@ -8,7 +8,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from streamlit_app.core.data_access import DashboardData, dashboard_snapshot_timestamp, load_dashboard_data
+from streamlit_app.core.data_access import (
+    DashboardData,
+    dashboard_snapshot_timestamp,
+    load_dashboard_data,
+)
 from streamlit_app.core.narrative import load_daily_summary, narrative_snapshot_timestamp
 
 
@@ -182,7 +186,11 @@ def build_sla_report(
             owner="Analytics Engineering Lead",
             alert_channel="#exec-analytics",
             recommended_action="Refresh Gold-layer materializations and verify dbt runs completed successfully.",
-            evidence="gold_snapshot=available" if data.source_layer == "gold" else "gold_snapshot=missing",
+            evidence=(
+                "gold_snapshot=available"
+                if data.source_layer == "gold"
+                else "gold_snapshot=missing"
+            ),
         )
     )
 
@@ -330,7 +338,5 @@ def summarize_report(report: dict[str, Any]) -> str:
         f"Warnings: {len(report['warnings'])}",
     ]
     for item in report["items"]:
-        lines.append(
-            f"- {item['layer']}: {item['metric']} -> {item['status']} ({item['actual']})"
-        )
+        lines.append(f"- {item['layer']}: {item['metric']} -> {item['status']} ({item['actual']})")
     return "\n".join(lines)

@@ -6,7 +6,13 @@ import json
 from pathlib import Path
 
 
-ARTIFACT_PATH = Path(__file__).resolve().parents[2] / "airflow" / "artifacts" / "executive_storytelling" / "daily_summary.json"
+ARTIFACT_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "airflow"
+    / "artifacts"
+    / "executive_storytelling"
+    / "daily_summary.json"
+)
 
 REQUIRED_NARRATIVE_KEYS = {
     "summary_date": str,

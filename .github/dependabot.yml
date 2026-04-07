@@ -8,8 +8,6 @@ updates:
       day: "monday"
       time: "03:00"
     open-pull-requests-limit: 10
-    reviewers:
-      - "theo-lyd"
     commit-message:
       prefix: "deps(pip):"
       prefix-development: "deps(pip-dev):"
@@ -36,8 +34,6 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "03:15"
-    reviewers:
-      - "theo-lyd"
     commit-message:
       prefix: "ci(actions):"
     labels:

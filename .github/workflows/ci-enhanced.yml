@@ -12,6 +12,7 @@ env:
   PYTHON_VERSION: "3.10"
   PIP_CACHE_DIR: ~/.cache/pip
   DBT_PROFILES_DIR: ${{ github.workspace }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # Quality gates that run on PRs and pushes
@@ -140,7 +141,7 @@ jobs:
       - name: dbt parse (schema validation)
         env:
           DBT_PROFILES_DIR: ${{ github.workspace }}
-        run: dbt parse --project-dir . --select state:modified --state target/
+        run: dbt parse --project-dir .
 
       - name: dbt compile
         env:

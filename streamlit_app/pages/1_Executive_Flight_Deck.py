@@ -3,7 +3,11 @@ from __future__ import annotations
 import streamlit as st
 
 from streamlit_app.core.auth import get_visible_views
-from streamlit_app.core.charts import cohort_heatmap_figure, ltv_journey_sankey_figure, survival_comparison_figure
+from streamlit_app.core.charts import (
+    cohort_heatmap_figure,
+    ltv_journey_sankey_figure,
+    survival_comparison_figure,
+)
 from streamlit_app.core.data_access import (
     build_kpis,
     cohort_matrix,
@@ -54,7 +58,11 @@ with col2:
     elasticity = st.slider("Retention Elasticity", 0.0, 2.0, 0.6, 0.05)
 
 projected_nrr = simulate_nrr_impact(kpis["nrr"], discount_pct, elasticity)
-st.metric("Projected NRR", f"{projected_nrr * 100:.1f}%", delta=f"{(projected_nrr - kpis['nrr']) * 100:.1f}pp")
+st.metric(
+    "Projected NRR",
+    f"{projected_nrr * 100:.1f}%",
+    delta=f"{(projected_nrr - kpis['nrr']) * 100:.1f}pp",
+)
 
 st.subheader("AI Narrative Panel")
 summary = get_cached_narrative_summary()
