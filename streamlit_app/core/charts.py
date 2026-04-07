@@ -95,3 +95,65 @@ def sla_status_distribution_figure(history: pd.DataFrame) -> go.Figure:
     )
     fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
     return fig
+
+
+def sla_grade_trend_figure(run_history: pd.DataFrame) -> go.Figure:
+    if run_history.empty:
+        return go.Figure()
+
+    grade_to_score = {
+        "A+": 100,
+        "A": 95,
+        "B": 85,
+        "C": 75,
+        "D": 60,
+    }
+    data = run_history.copy()
+    data["grade_score"] = data["grade"].map(grade_to_score).fillna(0)
+
+    fig = px.line(
+        data,
+        x="generated_at",
+        y="grade_score",
+        markers=True,
+        text="grade",
+        labels={
+            "generated_at": "Run Time",
+            "grade_score": "Grade Score",
+        },
+    )
+    fig.update_yaxes(range=[0, 100])
+    fig.update_traces(textposition="top center")
+    fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
+    return fig
+
+
+def sla_breach_warning_trend_figure(run_history: pd.DataFrame) -> go.Figure:
+    if run_history.empty:
+        return go.Figure()
+
+    data = run_history.copy()
+    chart_data = data.melt(
+        id_vars=["generated_at"],
+        value_vars=["breach_count", "warning_count"],
+        var_name="series",
+        value_name="count",
+    )
+    chart_data["series"] = chart_data["series"].replace(
+        {"breach_count": "Breaches", "warning_count": "Warnings"}
+    )
+
+    fig = px.line(
+        chart_data,
+        x="generated_at",
+        y="count",
+        color="series",
+        markers=True,
+        labels={
+            "generated_at": "Run Time",
+            "count": "Count",
+            "series": "Series",
+        },
+    )
+    fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
+    return fig

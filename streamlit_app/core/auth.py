@@ -41,6 +41,11 @@ PROTECTED_VIEWS: tuple[ProtectedView, ...] = (
         description="Operational SLA monitoring, alerts, and compliance review",
     ),
     ProtectedView(
+        label="Operations Status",
+        capability="sla_operations",
+        description="Run health, history freshness, and recent operational snapshot",
+    ),
+    ProtectedView(
         label="KPI Glossary",
         capability="public_views",
         description="Reference help for KPI definitions and formulas",

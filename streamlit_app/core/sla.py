@@ -49,6 +49,18 @@ def _utc_now(now: datetime | None = None) -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _parse_iso_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
 def _hours_since(timestamp: float, now: datetime) -> float | None:
     if timestamp <= 0:
         return None
@@ -296,6 +308,95 @@ def load_sla_history(history_path: Path | None = None) -> list[dict[str, Any]]:
             except json.JSONDecodeError:
                 continue
     return records
+
+
+def build_sla_run_history(
+    history: list[dict[str, Any]],
+    report: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Aggregate row-level SLA history into one record per SLA run."""
+
+    aggregated: dict[str, dict[str, Any]] = {}
+    for row in history:
+        generated_at = row.get("generated_at")
+        if not generated_at:
+            continue
+
+        run = aggregated.setdefault(
+            generated_at,
+            {
+                "generated_at": generated_at,
+                "overall_score": float(row.get("overall_score", 0.0)),
+                "grade": row.get("grade", "N/A"),
+                "source_layer": row.get("source_layer", "unknown"),
+                "alert_count": int(row.get("alert_count", 0)),
+                "breach_count": int(row.get("breach_count", 0)),
+                "warning_count": int(row.get("warning_count", 0)),
+                "contract_valid": bool(row.get("contract_valid", True)),
+            },
+        )
+
+        run["overall_score"] = float(row.get("overall_score", run["overall_score"]))
+        run["grade"] = row.get("grade", run["grade"])
+        run["source_layer"] = row.get("source_layer", run["source_layer"])
+        run["alert_count"] = max(run["alert_count"], int(row.get("alert_count", 0)))
+        run["breach_count"] = max(run["breach_count"], int(row.get("breach_count", 0)))
+        run["warning_count"] = max(run["warning_count"], int(row.get("warning_count", 0)))
+        run["contract_valid"] = bool(row.get("contract_valid", run["contract_valid"]))
+
+    if not aggregated and report is not None:
+        return [
+            {
+                "generated_at": report["generated_at"],
+                "overall_score": float(report["overall_score"]),
+                "grade": report["grade"],
+                "source_layer": report["source_layer"],
+                "alert_count": int(report["alert_count"]),
+                "breach_count": len(report["breaches"]),
+                "warning_count": len(report["warnings"]),
+                "contract_valid": bool(report["contract_valid"]),
+            }
+        ]
+
+    return sorted(aggregated.values(), key=lambda item: item["generated_at"])
+
+
+def build_operational_snapshot(
+    report: dict[str, Any] | None = None,
+    history: list[dict[str, Any]] | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Build a compact operational snapshot used by the ops dashboard and export script."""
+
+    current_time = _utc_now(now)
+    current_report = report or build_sla_report()
+    history_rows = history if history is not None else load_sla_history()
+    run_history = build_sla_run_history(history_rows, current_report)
+
+    latest = run_history[-1]
+    latest_dt = _parse_iso_timestamp(latest.get("generated_at"))
+    freshness_hours = None
+    if latest_dt is not None:
+        freshness_hours = max(0.0, (current_time - latest_dt).total_seconds() / 3600.0)
+
+    previous = run_history[-2] if len(run_history) >= 2 else None
+    score_delta = None
+    breach_delta = None
+    if previous is not None:
+        score_delta = round(float(latest["overall_score"]) - float(previous["overall_score"]), 1)
+        breach_delta = int(latest["breach_count"]) - int(previous["breach_count"])
+
+    return {
+        "generated_at": current_time.isoformat(),
+        "latest": latest,
+        "history_runs": run_history,
+        "history_rows": len(history_rows),
+        "history_run_count": len(run_history),
+        "history_freshness_hours": freshness_hours,
+        "score_delta": score_delta,
+        "breach_delta": breach_delta,
+        "report": current_report,
+    }
 
 
 def build_alert_payload(report: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
