@@ -50,6 +50,7 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 - [Phase 4 Batch 2 Command Log](docs/PHASE_4_BATCH_2_COMMAND_LOG.md) - Reproducible commands for operators, sensors, and DAG validation
 - [Phase 4 Batch 3 Completion Report](docs/PHASE_4_BATCH_3_COMPLETION_REPORT.md) - Resilience patterns, retry policies, Slack notifications, real operator integration
 - [Phase 4 Batch 3 Command Log](docs/PHASE_4_BATCH_3_COMMAND_LOG.md) - Reproducible commands for error handling, pooling, and observability setup
-
+- [Phase 4 Batch 4 Completion Report](PHASE_4_BATCH_4_COMPLETION_REPORT.md) - Monte Carlo Data quality monitoring, health checks, incident routing, alert handlers
+- [Phase 4 Batch 4 Command Log](PHASE_4_BATCH_4_COMMAND_LOG.md) - Reproducible commands for Monte Carlo setup, configuration, and integration
 ### Audit & Corrections
 - [Audit Findings and Corrections](docs/AUDIT_FINDINGS_AND_CORRECTIONS.md) - Phase 1-3 audit report, high/medium severity findings, and applied corrections
