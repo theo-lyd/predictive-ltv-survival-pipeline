@@ -59,6 +59,10 @@ try:
         log_task_start,
         log_task_end,
     )
+    from utils.monte_carlo_alerts import (
+        create_mc_health_check_task,
+        MonteCarloAlertHandler,
+    )
 except ImportError as e:
     raise ImportError(
         f"Failed to import custom operators/utils. "
@@ -316,7 +320,43 @@ with DAG(
         run_gold >> test_gold
 
     # ========================================================================
-    # Task Dependencies (Full Execution Chain with Resilience)
+    # Phase 4.5: Monte Carlo monitoring checks (Batch 4 - Optional health checks)
+    # ========================================================================
+    
+    # Optional: Check Monte Carlo health after each layer
+    # Set fail_on_critical=False to allow pipeline to proceed with warnings
+    mc_check_bronze = PythonOperator(
+        task_id="mc_check_bronze_health",
+        python_callable=create_mc_health_check_task("bronze", fail_on_critical=False),
+        provide_context=True,
+        doc="""
+        Check Monte Carlo data quality for Bronze layer.
+        
+        - Queries asset health from Monte Carlo API
+        - Lists any open incidents (volume, freshness, schema)
+        - Routes incidents to Slack if any detected
+        - Does not fail pipeline (monitoring only)
+        
+        **Batch 4**: Observability feature monitoring layer tables
+        """,
+    )
+
+    mc_check_silver = PythonOperator(
+        task_id="mc_check_silver_health",
+        python_callable=create_mc_health_check_task("silver", fail_on_critical=False),
+        provide_context=True,
+        doc="""Check Monte Carlo health for Silver layer.""",
+    )
+
+    mc_check_gold = PythonOperator(
+        task_id="mc_check_gold_health",
+        python_callable=create_mc_health_check_task("gold", fail_on_critical=False),
+        provide_context=True,
+        doc="""Check Monte Carlo health for Gold layer.""",
+    )
+
+    # ========================================================================
+    # Task Dependencies (Full Execution Chain with Resilience + MC Monitoring)
     # ========================================================================
 
-    start_pipeline >> phase_1 >> phase_2 >> phase_3 >> phase_4 >> end_pipeline
+    start_pipeline >> phase_1 >> phase_2 >> mc_check_bronze >> phase_3 >> mc_check_silver >> phase_4 >> mc_check_gold >> end_pipeline

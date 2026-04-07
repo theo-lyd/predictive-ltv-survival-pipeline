@@ -14,6 +14,11 @@ try:
         log_task_start,
         log_task_end,
     )
+    from .monte_carlo_alerts import (
+        MonteCarloAlertHandler,
+        IncidentResponseHandler,
+        create_mc_health_check_task,
+    )
 except ImportError:
     # Fall back to absolute import (when run standalone)
     from resilience import (
@@ -27,6 +32,11 @@ except ImportError:
         create_task_config_with_resilience,
         log_task_start,
         log_task_end,
+    )
+    from monte_carlo_alerts import (
+        MonteCarloAlertHandler,
+        IncidentResponseHandler,
+        create_mc_health_check_task,
     )
 
 __all__ = [
