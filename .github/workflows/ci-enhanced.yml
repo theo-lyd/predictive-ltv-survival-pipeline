@@ -73,7 +73,7 @@ jobs:
         continue-on-error: true
 
       - name: Check code formatting with black
-        run: python -m black src tests streamlit_app --line-length=100 --check
+        run: python -m black src tests streamlit_app --line-length=100 --target-version=py310 --check
 
       - name: Lint YAML configuration files
         run: |

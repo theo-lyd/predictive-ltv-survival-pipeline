@@ -50,10 +50,10 @@ install-dev:
 lint:
 	$(PYTHON) -m pylint src/ --disable=C0111,C0103,C0301,C0413,W0718,R0914,R0911,W0212
 	$(PYTHON) -m flake8 src tests --max-line-length=100 --extend-ignore=E501,E402
-	$(PYTHON) -m black src tests --line-length=100 --check
+	$(PYTHON) -m black src tests --line-length=100 --target-version=py310 --check
 
 format:
-	$(PYTHON) -m black src tests --line-length=100
+	$(PYTHON) -m black src tests --line-length=100 --target-version=py310
 	$(PYTHON) -m isort src tests --profile black
 
 test:
