@@ -36,3 +36,8 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 - [Phase 2 Command Log](docs/PHASE_2_COMMAND_LOG.md) - Reproducible Phase 2 build/validate command set
 - [Phase 2 Silver Data Dictionary](docs/PHASE_2_SILVER_DATA_DICTIONARY.md) - Core Silver entities, grain, and field semantics
 - [Phase 2 Contract Assumptions](docs/PHASE_2_CONTRACT_ASSUMPTIONS.md) - Null-handling strategy and deterministic business-key assumptions
+
+### Phase 3: Gold Modeling & Thesis Engine Documentation
+- [Phase 3 Implementation Report](docs/PHASE_3_IMPLEMENTATION_REPORT.md) - Gold metrics, predictive models, and acceptance mapping
+- [Phase 3 Command Log](docs/PHASE_3_COMMAND_LOG.md) - Build, run, and validation command flow for advanced modeling
+- [Phase 3 Technical Note](docs/PHASE_3_TECHNICAL_NOTE.md) - Statistical assumptions and interpretation guidance
