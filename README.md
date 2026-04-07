@@ -57,6 +57,16 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 - [Phase 4 Batch 5.1 Hardening Report](PHASE_4_BATCH_5_1_HARDENING_REPORT.md) - Failure policy decision, retries/timeouts, unit tests, compatibility fixes, and rationale
 - [Phase 4 Batch 5.1 Command Log](PHASE_4_BATCH_5_1_COMMAND_LOG.md) - Commands used for variable setup, task-level validation, and warning-resolution checks
 
+### Phase 5: BI & AI-Supported Storytelling Documentation
+- [Phase 5 Implementation Plan](docs/PHASE_5_IMPLEMENTATION_PLAN.md) - Batch/chunk breakdown for complete executive dashboard delivery
+- [Phase 5 Batch 1 Completion Report](docs/PHASE_5_BATCH_1_COMPLETION_REPORT.md) - Modular dashboard foundation and core visual components
+- [Phase 5 Batch 1 Command Log](docs/PHASE_5_BATCH_1_COMMAND_LOG.md) - Commands for schema profiling and dashboard module setup
+- [Phase 5 Batch 2 Completion Report](docs/PHASE_5_BATCH_2_COMPLETION_REPORT.md) - AI narrative workflow and Airflow integration
+- [Phase 5 Batch 2 Command Log](docs/PHASE_5_BATCH_2_COMMAND_LOG.md) - Commands for DAG integration and task registration validation
+- [Phase 5 Batch 3 Completion Report](docs/PHASE_5_BATCH_3_COMPLETION_REPORT.md) - Role views, glossary, latency validation, and QA completion
+- [Phase 5 Batch 3 Command Log](docs/PHASE_5_BATCH_3_COMMAND_LOG.md) - Commands for tests, latency checks, and local app run
+- [Phase 5 Batch Completion Summary](docs/PHASE_5_BATCH_COMPLETION_SUMMARY.md) - Consolidated acceptance mapping and strategic-question coverage
+
 ### Audit & Corrections
 - [Audit Findings and Corrections](docs/AUDIT_FINDINGS_AND_CORRECTIONS.md) - Phase 1-3 audit report, high/medium severity findings, and applied corrections
 - [Phase 4 Audit Findings and Corrections (2026-04-07)](docs/PHASE_4_AUDIT_FINDINGS_AND_CORRECTIONS_2026_04_07.md) - Comprehensive Phase 4 production-readiness audit with implemented fixes and optimization notes
