@@ -50,8 +50,8 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 - [Phase 4 Batch 2 Command Log](docs/PHASE_4_BATCH_2_COMMAND_LOG.md) - Reproducible commands for operators, sensors, and DAG validation
 - [Phase 4 Batch 3 Completion Report](docs/PHASE_4_BATCH_3_COMPLETION_REPORT.md) - Resilience patterns, retry policies, Slack notifications, real operator integration
 - [Phase 4 Batch 3 Command Log](docs/PHASE_4_BATCH_3_COMMAND_LOG.md) - Reproducible commands for error handling, pooling, and observability setup
-- [Phase 4 Batch 4 Completion Report](PHASE_4_BATCH_4_COMPLETION_REPORT.md) - Monte Carlo Data quality monitoring, health checks, incident routing, alert handlers
-- [Phase 4 Batch 4 Command Log](PHASE_4_BATCH_4_COMMAND_LOG.md) - Reproducible commands for Monte Carlo setup, configuration, and integration
+- [Phase 4 Batch 4 Completion Report](docs/PHASE_4_BATCH_4_COMPLETION_REPORT.md) - Monte Carlo Data quality monitoring, health checks, incident routing, alert handlers
+- [Phase 4 Batch 4 Command Log](docs/PHASE_4_BATCH_4_COMMAND_LOG.md) - Reproducible commands for Monte Carlo setup, configuration, and integration
 - [Phase 4 Batch 5 Completion Report](PHASE_4_BATCH_5_COMPLETION_REPORT.md) - Dashboards, runbooks, automated remediation, and anomaly learning
 - [Phase 4 Batch 5 Command Log](PHASE_4_BATCH_5_COMMAND_LOG.md) - Reproducible commands for validating Batch 5 observability tasks
 - [Phase 4 Batch 5.1 Hardening Report](PHASE_4_BATCH_5_1_HARDENING_REPORT.md) - Failure policy decision, retries/timeouts, unit tests, compatibility fixes, and rationale
@@ -59,3 +59,4 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 
 ### Audit & Corrections
 - [Audit Findings and Corrections](docs/AUDIT_FINDINGS_AND_CORRECTIONS.md) - Phase 1-3 audit report, high/medium severity findings, and applied corrections
+- [Phase 4 Audit Findings and Corrections (2026-04-07)](docs/PHASE_4_AUDIT_FINDINGS_AND_CORRECTIONS_2026_04_07.md) - Comprehensive Phase 4 production-readiness audit with implemented fixes and optimization notes

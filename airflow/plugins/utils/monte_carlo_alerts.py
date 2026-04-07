@@ -49,7 +49,12 @@ class MonteCarloAlertHandler:
             self.email_recipients = []
             self.pagerduty_key = None
 
-    def route_incident(self, incident: Dict[str, Any], layer: str) -> None:
+    def route_incident(
+        self,
+        incident: Dict[str, Any],
+        layer: str,
+        raise_on_critical: bool = True,
+    ) -> None:
         """
         Route incident to appropriate notification channels based on severity and layer.
         
@@ -73,10 +78,11 @@ class MonteCarloAlertHandler:
         # Escalate if needed
         if severity == "CRITICAL":
             self._escalate_incident(incident, layer)
-            raise AirflowException(
-                f"CRITICAL data quality incident detected in {layer} layer: "
-                f"{incident.get('description')}"
-            )
+            if raise_on_critical:
+                raise AirflowException(
+                    f"CRITICAL data quality incident detected in {layer} layer: "
+                    f"{incident.get('description')}"
+                )
 
         # Log for audit
         self._log_incident(incident, layer, severity)
@@ -85,21 +91,19 @@ class MonteCarloAlertHandler:
         """Send incident notification to Slack."""
         try:
             from airflow.providers.slack.operators.slack_webhook import SlackWebhookOperator
-            from airflow.models import Variable
             
             message = self._format_incident_message(incident, layer, severity)
             channel = self._select_channel(severity)
-            
-            # Try to send via Slack webhook
+            incident_id = str(incident.get("id", "unknown")).replace("-", "_")
+
+            # Try to send via Slack connection if configured.
             try:
-                webhook_url = Variable.get("SLACK_WEBHOOK_URL", None)
-                if webhook_url:
-                    SlackWebhookOperator(
-                        task_id=f"notify_incident_{incident.get('id')}",
-                        http_conn_id="slack_webhook",
-                        message=message,
-                        channel=channel,
-                    ).execute({})
+                SlackWebhookOperator(
+                    task_id=f"notify_incident_{incident_id}",
+                    http_conn_id="slack_webhook",
+                    message=message,
+                    channel=channel,
+                ).execute({})
             except Exception as e:
                 logger.warning(f"Failed to send Slack notification: {e}")
 
@@ -239,15 +243,15 @@ class MonteCarloAlertHandler:
                         "severity": incident_severity,
                     })
                     
-                    # Route each incident
-                    self.route_incident(incident, layer)
-                    
                     if incident_severity == "CRITICAL":
                         critical_found = True
                         health_status["critical_incidents"].append({
                             "table": table_full_name,
                             "incident": incident,
                         })
+
+                    # Route each incident without raising inside the per-table processing loop.
+                    self.route_incident(incident, layer, raise_on_critical=False)
 
                 health_status["tables"][table_short_name] = table_health
 

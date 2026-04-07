@@ -9,7 +9,6 @@ Provides integration with Monte Carlo Data's API for:
 
 from __future__ import annotations
 
-import json
 import logging
 from typing import Any
 from datetime import datetime, timedelta
@@ -60,7 +59,8 @@ class MonteCarloHook(BaseHook):
             self.api_secret = conn.password or Variable.get("monte_carlo_api_secret", "")
             
             # Base URL
-            self.base_url = conn.host or "https://api.montecarlodata.com"
+            raw_host = conn.host or "https://api.montecarlodata.com"
+            self.base_url = raw_host if raw_host.startswith("http") else f"https://{raw_host}"
             
             logger.info(f"Connecting to Monte Carlo at {self.base_url}")
             
@@ -72,6 +72,10 @@ class MonteCarloHook(BaseHook):
                     "Authorization": f"Bearer {self.api_key}",
                     "Content-Type": "application/json",
                 })
+            else:
+                raise AirflowException(
+                    "Monte Carlo API key is not configured. Set connection login or Variable 'monte_carlo_api_key'."
+                )
         
         return self.session
 

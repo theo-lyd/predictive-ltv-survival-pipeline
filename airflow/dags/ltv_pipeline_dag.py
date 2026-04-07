@@ -35,7 +35,6 @@ import os
 from datetime import datetime, timedelta
 
 from airflow import DAG
-from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
 from airflow.sensors.filesystem import FileSensor
 from airflow.sensors.time_delta import TimeDeltaSensor
@@ -56,14 +55,9 @@ try:
     from utils.resilience import (
         on_failure_callback,
         on_retry_callback,
-        on_success_callback,
-        create_task_config_with_resilience,
-        log_task_start,
-        log_task_end,
     )
     from utils.monte_carlo_alerts import (
         create_mc_health_check_task,
-        MonteCarloAlertHandler,
     )
     from utils.observability_dashboards import (
         collect_observability_snapshot,
@@ -155,7 +149,7 @@ with DAG(
     dag_id="ltv_survival_pipeline",
     default_args=DEFAULT_ARGS,
     description="Automates ingestion, Bronze/Silver/Gold transformations with resilience and error handling",
-    schedule_interval="0 6 * * *",  # Daily 6 AM UTC
+    schedule="0 6 * * *",  # Daily 6 AM UTC
     catchup=False,
     tags=["ltv", "unit-economics", "survival-analysis", "databricks", "dbt", "phase-4-batch-3"],
     max_active_runs=1,  # Prevent concurrent runs
@@ -169,14 +163,12 @@ with DAG(
     start_pipeline = PythonOperator(
         task_id="start_pipeline",
         python_callable=log_pipeline_start,
-        provide_context=True,
         doc="Log pipeline start and key parameters",
     )
 
     end_pipeline = PythonOperator(
         task_id="end_pipeline",
         python_callable=log_pipeline_success,
-        provide_context=True,
         trigger_rule="all_done",
         doc="Log pipeline completion status",
     )
@@ -356,7 +348,6 @@ with DAG(
     mc_check_bronze = PythonOperator(
         task_id="mc_check_bronze_health",
         python_callable=create_mc_health_check_task("bronze", fail_on_critical=False),
-        provide_context=True,
         doc="""
         Check Monte Carlo data quality for Bronze layer.
         
@@ -372,14 +363,12 @@ with DAG(
     mc_check_silver = PythonOperator(
         task_id="mc_check_silver_health",
         python_callable=create_mc_health_check_task("silver", fail_on_critical=False),
-        provide_context=True,
         doc="""Check Monte Carlo health for Silver layer.""",
     )
 
     mc_check_gold = PythonOperator(
         task_id="mc_check_gold_health",
         python_callable=create_mc_health_check_task("gold", fail_on_critical=False),
-        provide_context=True,
         doc="""Check Monte Carlo health for Gold layer.""",
     )
 
@@ -394,7 +383,6 @@ with DAG(
         collect_snapshot = PythonOperator(
             task_id="collect_observability_snapshot",
             python_callable=_with_observability_failure_policy(collect_observability_snapshot),
-            provide_context=True,
             **batch_5_task_kwargs,
             doc="""
             Collect latest observability signals from Monte Carlo checks.
@@ -408,7 +396,6 @@ with DAG(
         publish_grafana = PythonOperator(
             task_id="publish_grafana_dashboard",
             python_callable=_with_observability_failure_policy(publish_grafana_dashboard),
-            provide_context=True,
             **batch_5_task_kwargs,
             doc="""Generate Grafana dashboard JSON artifact from latest snapshot.""",
         )
@@ -416,7 +403,6 @@ with DAG(
         publish_datadog = PythonOperator(
             task_id="publish_datadog_metrics",
             python_callable=_with_observability_failure_policy(publish_datadog_metrics),
-            provide_context=True,
             **batch_5_task_kwargs,
             doc="""Emit observability counters to Datadog when API key is configured.""",
         )
@@ -424,7 +410,6 @@ with DAG(
         automated_remediation = PythonOperator(
             task_id="run_automated_remediation",
             python_callable=_with_observability_failure_policy(run_automated_remediation),
-            provide_context=True,
             **batch_5_task_kwargs,
             doc="""
             Run severity-based automated remediation workflows.
@@ -438,7 +423,6 @@ with DAG(
         anomaly_learning = PythonOperator(
             task_id="run_anomaly_learning",
             python_callable=_with_observability_failure_policy(learn_monitor_thresholds),
-            provide_context=True,
             **batch_5_task_kwargs,
             doc="""
             Learn adaptive thresholds from monitor history.
