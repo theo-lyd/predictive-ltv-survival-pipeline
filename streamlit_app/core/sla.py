@@ -399,6 +399,76 @@ def build_operational_snapshot(
     }
 
 
+def build_compliance_audit_artifact(
+    report: dict[str, Any] | None = None,
+    history: list[dict[str, Any]] | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Build an audit-ready compliance artifact from SLA report and history evidence."""
+
+    current_time = _utc_now(now)
+    current_report = report or build_sla_report()
+    history_rows = history if history is not None else load_sla_history()
+    operational_snapshot = build_operational_snapshot(
+        report=current_report,
+        history=history_rows,
+        now=current_time,
+    )
+
+    history_runs = operational_snapshot["history_runs"]
+    latest_run = history_runs[-1] if history_runs else None
+
+    evidence_records = []
+    for item in current_report["breaches"] + current_report["warnings"]:
+        evidence_records.append(
+            {
+                "layer": item["layer"],
+                "metric": item["metric"],
+                "status": item["status"],
+                "severity": item["severity"],
+                "owner": item["owner"],
+                "alert_channel": item["alert_channel"],
+                "recommended_action": item["recommended_action"],
+                "evidence": item["evidence"],
+                "actual": item["actual"],
+                "target": item["target"],
+            }
+        )
+
+    return {
+        "schema_version": "1.0.0",
+        "artifact_type": "sla_compliance_audit",
+        "generated_at": current_time.isoformat(),
+        "summary": {
+            "overall_score": current_report["overall_score"],
+            "grade": current_report["grade"],
+            "source_layer": current_report["source_layer"],
+            "alert_count": current_report["alert_count"],
+            "breach_count": len(current_report["breaches"]),
+            "warning_count": len(current_report["warnings"]),
+            "contract_valid": current_report["contract_valid"],
+        },
+        "history": {
+            "row_count": len(history_rows),
+            "run_count": len(history_runs),
+            "latest_run_at": latest_run["generated_at"] if latest_run else None,
+            "trend_summary": {
+                "score_delta": operational_snapshot["score_delta"],
+                "breach_delta": operational_snapshot["breach_delta"],
+                "history_freshness_hours": operational_snapshot["history_freshness_hours"],
+            },
+            "recent_runs": history_runs[-10:],
+        },
+        "evidence": {
+            "breaches": current_report["breaches"],
+            "warnings": current_report["warnings"],
+            "records": evidence_records,
+            "current_report": current_report,
+            "operational_snapshot": operational_snapshot,
+        },
+    }
+
+
 def build_alert_payload(report: dict[str, Any], item: dict[str, Any]) -> dict[str, Any]:
     """Build a structured alert/ticket payload for a breached SLA item."""
 

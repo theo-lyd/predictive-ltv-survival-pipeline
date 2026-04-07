@@ -72,6 +72,14 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 - [Audit Findings and Corrections](docs/AUDIT_FINDINGS_AND_CORRECTIONS.md) - Phase 1-3 audit report, high/medium severity findings, and applied corrections
 - [Phase 4 Audit Findings and Corrections (2026-04-07)](docs/PHASE_4_AUDIT_FINDINGS_AND_CORRECTIONS_2026_04_07.md) - Comprehensive Phase 4 production-readiness audit with implemented fixes and optimization notes
 
+### Phase 7: Production Hardening & Enterprise Readiness
+- [Phase 7 Implementation Plan](docs/PHASE_7_IMPLEMENTATION_PLAN.md) - Batch roadmap for access, observability, compliance, and hardening
+- [Access Control Policy](docs/ACCESS_CONTROL_POLICY.md) - Role-to-capability mapping and enforcement model
+- [Operations Status Guide](docs/OPERATIONS_STATUS_GUIDE.md) - Operational trend interpretation and escalation rules
+- [Compliance Artifact Schema](docs/COMPLIANCE_ARTIFACT_SCHEMA.md) - Audit bundle JSON contract
+- [Compliance Audit Process](docs/COMPLIANCE_AUDIT_PROCESS.md) - Daily/weekly/monthly compliance workflow
+- [SLA Review Cadence](docs/SLA_REVIEW_CADENCE.md) - Expected review rhythm and ownership model
+
 ## GitHub Actions Polling (Token-Based)
 
 Use authenticated polling in this container to avoid unauthenticated API rate limits.
