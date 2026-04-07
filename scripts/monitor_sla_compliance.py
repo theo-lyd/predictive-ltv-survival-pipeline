@@ -109,7 +109,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--dispatch-alerts",
         action="store_true",
-        help="Dispatch alert payloads to configured webhook endpoint",
+        help="Legacy flag: same as --dispatch-mode live",
+    )
+    parser.add_argument(
+        "--dispatch-mode",
+        choices=["off", "shadow", "live"],
+        default="shadow",
+        help="Alert rollout mode: off (no payloads), shadow (generate only), live (send webhook)",
     )
     parser.add_argument(
         "--webhook-url",
@@ -123,13 +129,27 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    dispatch_mode = args.dispatch_mode
+    if args.dispatch_alerts:
+        dispatch_mode = "live"
+
+    if dispatch_mode == "live" and os.getenv("ALLOW_LIVE_ALERT_DISPATCH", "").lower() != "true":
+        print(
+            "Refusing live alert dispatch because ALLOW_LIVE_ALERT_DISPATCH is not set to true.",
+            file=sys.stderr,
+        )
+        return 2
+
     report = build_sla_report()
-    payloads = dispatch_alerts(
-        report,
-        dry_run=not args.dispatch_alerts,
-        webhook_url=args.webhook_url,
-        max_retries=max(args.max_dispatch_retries, 0),
-    )
+    if dispatch_mode == "off":
+        payloads = []
+    else:
+        payloads = dispatch_alerts(
+            report,
+            dry_run=(dispatch_mode != "live"),
+            webhook_url=args.webhook_url,
+            max_retries=max(args.max_dispatch_retries, 0),
+        )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -157,6 +177,7 @@ def main(argv: list[str] | None = None) -> int:
                     "alerts": payloads,
                     "audit_output": str(args.audit_output) if args.audit_output else None,
                     "integrity_output": str(integrity_manifest),
+                    "dispatch_mode": dispatch_mode,
                     "audit_artifact": audit_artifact,
                 },
                 indent=2,

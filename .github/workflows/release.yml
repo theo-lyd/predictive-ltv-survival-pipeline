@@ -88,7 +88,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel build
-          pip install -r requirements.txt
+          pip install -r requirements-lock.txt
 
       - name: Build distribution packages
         run: |
@@ -159,7 +159,7 @@ jobs:
       - name: Install released version
         run: |
           pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install -r requirements-lock.txt
 
       - name: Run validation tests
         run: |

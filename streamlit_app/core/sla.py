@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import os
 from dataclasses import asdict, dataclass
@@ -90,7 +91,7 @@ def write_integrity_manifest(paths: list[Path], output_path: Path | None = None)
     target_path = output_path or get_integrity_manifest_path()
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
-    manifest = {
+    manifest: dict[str, Any] = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "artifacts": [],
     }
@@ -104,6 +105,14 @@ def write_integrity_manifest(paths: list[Path], output_path: Path | None = None)
                 "sha256": file_sha256(artifact),
             }
         )
+
+    signing_key = os.getenv("SLA_INTEGRITY_SIGNING_KEY")
+    if signing_key:
+        payload = json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        manifest["signature"] = {
+            "algorithm": "hmac-sha256",
+            "value": hmac.new(signing_key.encode("utf-8"), payload, hashlib.sha256).hexdigest(),
+        }
 
     target_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return target_path

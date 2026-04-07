@@ -1,6 +1,6 @@
 .PHONY: help install install-dev lint format test clean bootstrap validate dbt-debug phase1-generate phase1-ingest phase2-ge-check \
 	sec-audit dbt-test dbt-parse dbt-compile dbt-slim-test ci-local ge-validate sla-monitor actions-poll compliance-audit \
-	phase7-latency phase7-recovery phase7-reprocess
+	phase7-latency phase7-recovery phase7-reprocess lock-deps lock-check verify-integrity
 
 PYTHON ?= $(shell if [ -x .venv/bin/python ]; then echo .venv/bin/python; else echo python; fi)
 PIP := $(PYTHON) -m pip
@@ -11,6 +11,8 @@ help:
 	@echo "Core Setup:"
 	@echo "  make install           - Install core dependencies"
 	@echo "  make install-dev       - Install core + dev dependencies"
+	@echo "  make lock-deps         - Regenerate pinned dependency lock files"
+	@echo "  make lock-check        - Verify lock files are up to date"
 	@echo "  make validate          - Validate environment setup"
 	@echo "  make clean             - Clean build artifacts"
 	@echo ""
@@ -46,12 +48,24 @@ help:
 
 install:
 	$(PIP) install --upgrade pip
-	$(PIP) install -r requirements.txt
+	$(PIP) install -r requirements-lock.txt
 
 install-dev:
 	$(PIP) install --upgrade pip
-	$(PIP) install -r requirements.txt
-	$(PIP) install -r requirements-dev.txt
+	$(PIP) install -r requirements-lock.txt
+	$(PIP) install -r requirements-dev-lock.txt
+
+lock-deps:
+	$(PIP) install pip-tools
+	$(PYTHON) -m piptools compile requirements.txt --output-file requirements-lock.txt
+	$(PYTHON) -m piptools compile requirements-dev.txt --output-file requirements-dev-lock.txt
+
+lock-check:
+	$(PIP) install pip-tools
+	$(PYTHON) -m piptools compile requirements.txt --output-file /tmp/requirements-lock.txt
+	$(PYTHON) -m piptools compile requirements-dev.txt --output-file /tmp/requirements-dev-lock.txt
+	diff -u requirements-lock.txt /tmp/requirements-lock.txt
+	diff -u requirements-dev-lock.txt /tmp/requirements-dev-lock.txt
 
 lint:
 	$(PYTHON) -m pylint src/ --disable=C0111,C0103,C0301,C0413,W0718,R0914,R0911,W0212
@@ -140,6 +154,10 @@ phase7-reprocess:
 	$(PYTHON) scripts/export_operational_snapshot.py
 	SLA_ARTIFACTS_DIR=$${SLA_ARTIFACTS_DIR:-$$(pwd)/artifacts/sla} \
 	$(PYTHON) scripts/export_compliance_audit.py
+
+verify-integrity:
+	SLA_ARTIFACTS_DIR=$${SLA_ARTIFACTS_DIR:-$$(pwd)/artifacts/sla} \
+	$(PYTHON) scripts/verify_integrity_manifest.py
 
 # Complete local CI pipeline
 ci-local: clean install-dev lint test dbt-parse dbt-test ge-validate

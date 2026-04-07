@@ -10,6 +10,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from scripts.export_compliance_audit import export_compliance_audit
 from scripts import monitor_sla_compliance
+from scripts.verify_integrity_manifest import verify_manifest
 from streamlit_app.core.sla import build_compliance_audit_artifact
 
 
@@ -161,3 +162,37 @@ def test_monitor_cli_writes_audit_artifact(tmp_path, monkeypatch):
     assert integrity_file.exists()
     payload = json.loads(audit_file.read_text(encoding="utf-8"))
     assert payload["artifact_type"] == "sla_compliance_audit"
+
+
+def test_integrity_manifest_verification_with_signature(tmp_path, monkeypatch):
+    report_file = tmp_path / "sla_report.json"
+    report_file.write_text(json.dumps(_sample_report()), encoding="utf-8")
+
+    history_file = tmp_path / "sla_history.jsonl"
+    history_file.write_text(
+        "\n".join(json.dumps(row) for row in _sample_history()) + "\n",
+        encoding="utf-8",
+    )
+
+    output_file = tmp_path / "compliance_audit.json"
+    integrity_file = tmp_path / "integrity_manifest.json"
+    monkeypatch.setenv("SLA_INTEGRITY_SIGNING_KEY", "unit-test-signing-key")
+
+    export_compliance_audit(
+        output_file,
+        report_file=report_file,
+        history_file=history_file,
+        integrity_output=integrity_file,
+    )
+
+    ok, errors = verify_manifest(integrity_file, signing_key="unit-test-signing-key")
+    assert ok is True
+    assert errors == []
+
+
+def test_monitor_live_dispatch_requires_safety_gate(monkeypatch):
+    monkeypatch.delenv("ALLOW_LIVE_ALERT_DISPATCH", raising=False)
+    monkeypatch.setattr(monitor_sla_compliance, "build_sla_report", lambda: _sample_report())
+
+    exit_code = monitor_sla_compliance.main(["--dispatch-mode", "live"])
+    assert exit_code == 2

@@ -23,6 +23,7 @@ An end-to-end Analytics Engineering system built on Databricks and dbt. Features
 ### Governance & Security
 - [Contributing Guide](CONTRIBUTING.md) - Contribution standards, validation requirements, and PR expectations
 - [Security Policy](SECURITY.md) - Vulnerability reporting and response commitments
+- [Branch Protection Required Checks](docs/BRANCH_PROTECTION_REQUIRED_CHECKS.md) - Required CI checks, review policy, and admin settings baseline
 
 ### Phase 0: Environment & Infrastructure Documentation
 - [Environment Setup Guide](ENVIRONMENT_SETUP.md) - Step-by-step new contributor onboarding
@@ -114,3 +115,25 @@ Optional identity metadata:
 - `APP_IDENTITY_SOURCE`
 
 If `APP_USER_ROLE` is missing or invalid, the app defaults to least privilege (`Sales Leadership`).
+
+## Dependency Lock Workflow
+
+Pinned lock files:
+- `requirements-lock.txt`
+- `requirements-dev-lock.txt`
+
+Commands:
+1. Regenerate lock files:
+	- `make lock-deps`
+2. Validate lock files are current:
+	- `make lock-check`
+
+The canonical CI pipeline enforces lock drift checks through the `Dependency Lock Check` job.
+
+## SLA Artifact Integrity Verification
+
+The SLA monitor/export flow writes an integrity manifest with SHA-256 checksums. If `SLA_INTEGRITY_SIGNING_KEY` is set, the manifest is also HMAC-signed.
+
+Verify integrity locally:
+- `make verify-integrity`
+- or `python scripts/verify_integrity_manifest.py --manifest <path>`
