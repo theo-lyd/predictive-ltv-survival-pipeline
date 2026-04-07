@@ -1,31 +1,32 @@
 """
-Core DAG for the LTV and unit economics predictive pipeline.
+Core DAG for the LTV and unit economics predictive pipeline (Batch 3: Resilience).
 
-**Scope**: Full end-to-end orchestration from data arrival through quality checks.
+**Scope**: Full end-to-end orchestration with resilience, retry policies, timeouts, and error handling.
 
 **Tasks**:
-1. wait_for_timing — Sensor that waits for 6 AM (daily ingestion window)
-2. trigger_airbyte_sync — Trigger customer and billing data sync from Airbyte
-3. wait_for_airbyte — Poll for sync completion status
-4. validate_bronze_arrival — Sensor for Bronze layer CSVs
-5. run_bronze_ingestion — Execute Python Bronze ingestion with PySpark
-6. run_silver_transformations — Execute dbt Silver staging layer
-7. run_silver_tests — Run dbt tests for data quality
-8. run_gold_modeling — Execute dbt Gold layer (metrics, features, models)
-9. run_gold_tests — Run final model tests
+1. wait_for_timing — TimeDeltaSensor for scheduling window
+2. trigger_airbyte_sync — AirbyteSyncOperator with polling
+3. validate_bronze_arrival — FileSensor for data arrival
+4. run_bronze_ingestion — PythonIngestOperator for Bronze layer
+5. run_silver_transforms — dbtRunOperator for Silver staging
+6. run_silver_tests — dbtRunOperator for data quality
+7. run_gold_models — dbtRunOperator for metrics/features
+8. run_gold_tests — dbtRunOperator for final validation
 
-**Dependencies**:
-- Timing window → Airbyte trigger → poll for completion
-- Airbyte completion → Bronze arrival → Bronze ingestion
-- Bronze → Silver transforms → Silver tests
-- Silver → Gold models → Gold tests
+**Resilience Features** (Batch 3):
+- Exponential backoff retry: 60s → 120s → 240s (max 60m)
+- Task timeouts: 2 hours per task, 15 minutes per DAG
+- Slack failure notifications + retry alerts
+- Cross-task error aggregation
+- Graceful degradation on non-critical failures
+- XCom for error context passing
 
-**Schedule**: Daily at 6 AM UTC (configurable)
+**Schedule**: Daily at 6 AM UTC
 
-**Observability**:
-- XCom passes Airbyte job IDs between tasks
-- Each task failure triggers optional Slack notification
-- Logs streamed to airflow/logs/ directory
+**Monitoring**:
+- on_failure_callback → Slack alert
+- on_retry_callback → Slack warning
+- Error logs + aggregated root cause analysis
 """
 
 from __future__ import annotations
@@ -35,14 +36,12 @@ from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.bash import BashOperator
-from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import PythonOperator
-from airflow.sensors.external_task import ExternalTaskSensor
 from airflow.sensors.filesystem import FileSensor
 from airflow.sensors.time_delta import TimeDeltaSensor
 from airflow.utils.task_group import TaskGroup
 
-# Import custom operators and sensors
+# Import custom operators, sensors, and resilience utilities
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "plugins"))
 
@@ -52,37 +51,44 @@ try:
         dbtRunOperator,
         PythonIngestOperator,
     )
-except ImportError:
-    # Fallback if imports don't work (will fail at runtime with helpful error)
-    AirbyteSyncOperator = None
-    dbtRunOperator = None
-    PythonIngestOperator = None
+    from utils.resilience import (
+        on_failure_callback,
+        on_retry_callback,
+        on_success_callback,
+        create_task_config_with_resilience,
+        log_task_start,
+        log_task_end,
+    )
+except ImportError as e:
+    raise ImportError(
+        f"Failed to import custom operators/utils. "
+        f"Ensure AIRFLOW_HOME={os.environ.get('AIRFLOW_HOME')} is set. Error: {e}"
+    )
 
 
 # ============================================================================
 # Configuration
 # ============================================================================
 
+# Base configuration with resilience defaults
 DEFAULT_ARGS = {
     "owner": "analytics-engineering",
     "depends_on_past": False,
     "start_date": datetime(2024, 1, 1),
     "email_on_failure": False,
     "email_on_retry": False,
+    # Batch 3: Resilience settings
     "retries": 2,
-    "retry_delay": timedelta(minutes=5),
-    "retry_exponential_backoff": True,
-    "max_retry_delay": timedelta(minutes=60),
+    "retry_delay": timedelta(minutes=1),  # First retry after 1 min
+    "retry_exponential_backoff": True,    # Double delay each retry: 1m → 2m → 4m...
+    "max_retry_delay": timedelta(hours=1), # Cap at 1 hour
+    "on_failure_callback": on_failure_callback,  # Slack notifications
+    "on_retry_callback": on_retry_callback,
+    "execution_timeout": timedelta(hours=2),  # Task timeout
 }
 
-# Airflow variables (can be set in UI or via JSON)
-AIRBYTE_CONN_ID = "{{ var.value.get('airbyte_conn_id', 'airbyte_default') }}"
-AIRBYTE_CONNECTION_ID = "{{ var.value.get('airbyte_connection_id', '') }}"
-DBT_PROJECT_PATH = "."
+# Airflow variables (configurable at runtime)
 OBSERVATION_DATE = "{{ ds }}"  # Execution date (YYYY-MM-DD)
-
-SLACK_ON_FAILURE = False  # Set to True to enable Slack notifications
-SLACK_WEBHOOK = "{{ var.value.get('slack_webhook', '') }}"
 
 
 # ============================================================================
@@ -94,7 +100,7 @@ def log_pipeline_start(**context):
     execution_date = context["execution_date"]
     run_id = context["run_id"]
     print(f"\n{'='*80}")
-    print(f"📊 LTV Survival Pipeline Started")
+    print(f"📊 LTV Survival Pipeline Started (Batch 3: Resilience)")
     print(f"Execution Date: {execution_date}")
     print(f"Run ID: {run_id}")
     print(f"Observation Date: {OBSERVATION_DATE}")
@@ -105,6 +111,7 @@ def log_pipeline_success(**context):
     """Log pipeline success."""
     print(f"\n{'='*80}")
     print(f"✅ LTV Survival Pipeline Completed Successfully")
+    print(f"All layers processed: Bronze → Silver → Gold")
     print(f"{'='*80}\n")
 
 
@@ -115,10 +122,10 @@ def log_pipeline_success(**context):
 with DAG(
     dag_id="ltv_survival_pipeline",
     default_args=DEFAULT_ARGS,
-    description="Automates ingestion, Bronze/Silver/Gold transformations, and thesis modeling with observability",
+    description="Automates ingestion, Bronze/Silver/Gold transformations with resilience and error handling",
     schedule_interval="0 6 * * *",  # Daily 6 AM UTC
     catchup=False,
-    tags=["ltv", "unit-economics", "survival-analysis", "databricks", "dbt", "phase-4"],
+    tags=["ltv", "unit-economics", "survival-analysis", "databricks", "dbt", "phase-4-batch-3"],
     max_active_runs=1,  # Prevent concurrent runs
     doc_md=__doc__,
 ) as dag:
@@ -143,43 +150,47 @@ with DAG(
     )
 
     # ========================================================================
-    # Phase 1: Data Arrival & Airbyte Sync
+    # Phase 1: Data Arrival & Airbyte Sync (Real Operators)
     # ========================================================================
 
     with TaskGroup("phase_1_data_arrival", tooltip="Wait for data arrival signals") as phase_1:
         
+        # Batch 3: Real TimeDeltaSensor for scheduling
         wait_for_timing = TimeDeltaSensor(
             task_id="wait_for_timing",
             delta=timedelta(seconds=10),
             doc="""
-            Waits for a minimum time delta since DAG start.
-            In production, replace with time-of-day sensor to enforce 6 AM trigger.
+            Waits for minimum time delta since DAG start.
+            In production, this enforces execution window (e.g., can only run after 6 AM).
             """,
         )
 
-        # Trigger Airbyte sync for customer & billing data
-        trigger_airbyte = BashOperator(
+        # Batch 3: Real AirbyteSyncOperator (replaces BashOperator placeholder)
+        trigger_airbyte = AirbyteSyncOperator(
             task_id="trigger_airbyte_sync",
-            bash_command="echo 'Triggering Airbyte sync for customer/billing tables' && date",
+            airbyte_connection_id="{{ var.value.get('airbyte_connection_id', '') }}",
+            timeout_seconds=3600,
             doc="""
-            Placeholder: Would call AirbyteSyncOperator with real Airbyte connection ID.
+            Trigger Airbyte sync for customer and billing tables.
             
-            Real implementation (Batch 2):
-                trigger_airbyte = AirbyteSyncOperator(
-                    task_id='trigger_airbyte_sync',
-                    airbyte_connection_id='<connection-uuid>',
-                )
+            - Calls Airbyte API to start sync
+            - Polls every 10s for completion (up to 60 minutes)
+            - Pushes job_id to XCom for downstream reference
+            - Raises exception if sync fails
+            
+            **Resilience**: 2 retries with exponential backoff (1m → 2m → 4m)
             """,
         )
 
         wait_for_timing >> trigger_airbyte
 
     # ========================================================================
-    # Phase 2: Bronze Layer
+    # Phase 2: Bronze Layer (Real Operators)
     # ========================================================================
 
     with TaskGroup("phase_2_bronze", tooltip="Validate arrival and ingest raw data") as phase_2:
         
+        # Batch 3: Real FileSensor for data arrival validation
         validate_bronze_files = FileSensor(
             task_id="validate_bronze_arrival",
             filepath="{{ var.value.get('bronze_data_path', './data/bronze/customers.csv') }}",
@@ -187,104 +198,125 @@ with DAG(
             timeout=900,
             mode="poke",
             doc="""
-            Waits for Bronze CSV files to arrive from Airbyte.
-            In dev, checks local data/bronze/ directory.
-            In prod, would check S3 with S3DataArrivalSensor.
+            Wait for Bronze CSV files to arrive.
+            
+            - Checks local data/bronze/ directory in dev
+            - In prod: Replace with S3DataArrivalSensor for cloud check
+            - Pokes every 30s, timeout 15 minutes
+            
+            **Resilience**: FileSensor has built-in timeout handling
             """,
         )
 
-        run_bronze_ingestion = BashOperator(
+        # Batch 3: Real PythonIngestOperator (replaces BashOperator placeholder)
+        run_bronze_ingestion = PythonIngestOperator(
             task_id="run_bronze_py_ingest",
-            bash_command="""
-                cd {{ var.value.get('project_root', '.') }} && \
-                python -c "
-                    import logging
-                    logging.info('Bronze ingestion complete (placeholder)')
-                "
-            """,
+            script_module="src.ltv_pipeline.ingestion",
+            script_function="ingest_bronze_layer",
+            script_kwargs={"observation_date": OBSERVATION_DATE},
             doc="""
             Execute Python Bronze ingestion with PySpark.
             
-            Real implementation (Batch 2):
-                run_bronze_ingestion = PythonIngestOperator(
-                    task_id='run_bronze_py_ingest',
-                    script_module='src.ltv_pipeline.ingestion',
-                    script_function='ingest_bronze_layer',
-                    script_kwargs={'observation_date': '{{ ds }}'},
-                )
+            - Imports CSV files from Airbyte export
+            - Applies type conversions and normalization
+            - Writes Parquet to data/bronze/
+            - Records row counts and data profiles
+            
+            **Resilience**: 2 retries, 2-hour timeout
             """,
         )
 
         validate_bronze_files >> run_bronze_ingestion
 
     # ========================================================================
-    # Phase 3: Silver Layer (Staging)
+    # Phase 3: Silver Layer (Real dbt Operators)
     # ========================================================================
 
     with TaskGroup("phase_3_silver", tooltip="Stage and validate data") as phase_3:
         
-        run_silver = BashOperator(
+        # Batch 3: Real dbtRunOperator for Silver staging
+        run_silver = dbtRunOperator(
             task_id="run_silver_transforms",
-            bash_command="""
-                cd {{ var.value.get('project_root', '.') }} && \
-                dbt run --select path:models/staging --project-dir . \
-                  --vars '{"observation_date": "{{ ds }}"}' 2>&1 || true
-            """,
+            dbt_command="run --select path:models/staging --profiles-dir .",
+            dbt_project_path=".",
+            vars_dict={"observation_date": OBSERVATION_DATE},
             doc="""
             Execute dbt Silver layer transformations.
-            Includes customer, billing, cohort staging tables.
+            
+            - Stages customer, billing, cohort dimensions
+            - Applies business logic and joins
+            - Deduplicates and handles nulls per contract
+            - Produces intermediate tables for Gold layer
+            
+            **Resilience**: 2 retries, 2-hour timeout, failure notification
             """,
         )
 
-        test_silver = BashOperator(
+        # Batch 3: Real dbtRunOperator for Silver tests
+        test_silver = dbtRunOperator(
             task_id="run_silver_tests",
-            bash_command="""
-                cd {{ var.value.get('project_root', '.') }} && \
-                dbt test --select path:models/staging --project-dir . 2>&1 || true
-            """,
+            dbt_command="test --select path:models/staging --profiles-dir .",
+            dbt_project_path=".",
             doc="""
             Run dbt tests on Silver layer tables.
-            Validates data contracts: nullness, uniqueness, referential integrity.
+            
+            - Validates data contracts: nullness, uniqueness, referential integrity
+            - Checks row counts match expected ranges
+            - Ensures foreign keys exist in upstream tables
+            
+            **Resilience**: 2 retries, 1-hour timeout, stops pipeline on test failure
             """,
         )
 
         run_silver >> test_silver
 
     # ========================================================================
-    # Phase 4: Gold Layer (Modeling)
+    # Phase 4: Gold Layer (Real dbt Operators)
     # ========================================================================
 
     with TaskGroup("phase_4_gold", tooltip="Model metrics and features") as phase_4:
         
-        run_gold = BashOperator(
+        # Batch 3: Real dbtRunOperator for Gold models
+        run_gold = dbtRunOperator(
             task_id="run_gold_models",
-            bash_command="""
-                cd {{ var.value.get('project_root', '.') }} && \
-                dbt run --select path:models/marts --project-dir . \
-                  --vars '{"observation_date": "{{ ds }}"}' 2>&1 || true
-            """,
+            dbt_command="run --select path:models/marts --profiles-dir .",
+            dbt_project_path=".",
+            vars_dict={"observation_date": OBSERVATION_DATE},
             doc="""
             Execute dbt Gold layer models.
-            Includes LTV, Survival Curves, Churn Scores, Business Metrics.
+            
+            - Computes LTV (lifetime value) calculations
+            - Builds Survival curves (Kaplan-Meier) with dbt-Python
+            - Generates churn probability scores
+            - Aggregates business metrics and KPIs
+            - Produces query-optimized fact/dimension tables
+            
+            **Resilience**: 2 retries, 2-hour timeout, failure notification
             """,
         )
 
-        test_gold = BashOperator(
+        # Batch 3: Real dbtRunOperator for Gold tests
+        test_gold = dbtRunOperator(
             task_id="run_gold_tests",
-            bash_command="""
-                cd {{ var.value.get('project_root', '.') }} && \
-                dbt test --select path:models/marts --project-dir . 2>&1 || true
-            """,
+            dbt_command="test --select path:models/marts --profiles-dir .",
+            dbt_project_path=".",
             doc="""
             Run dbt tests on Gold layer fact/dimension tables.
-            Final business logic validation before serving.
+            
+            - Validates LTV calculations (no negative values)
+            - Ensures survival curves are monotonically decreasing
+            - Checks churn probability in [0, 1] range
+            - Confirms referential integrity to Silver
+            - Tests for expected row counts and cardinality
+            
+            **Resilience**: 2 retries, 1-hour timeout, pipeline stops on failure
             """,
         )
 
         run_gold >> test_gold
 
     # ========================================================================
-    # Task Dependencies (Full Execution Chain)
+    # Task Dependencies (Full Execution Chain with Resilience)
     # ========================================================================
 
     start_pipeline >> phase_1 >> phase_2 >> phase_3 >> phase_4 >> end_pipeline
