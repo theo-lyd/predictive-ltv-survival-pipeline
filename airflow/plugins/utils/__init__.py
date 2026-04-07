@@ -26,6 +26,7 @@ try:
     )
     from .automated_remediation import run_automated_remediation
     from .anomaly_learning import learn_monitor_thresholds
+    from .executive_storytelling import generate_daily_ai_summary
 except ImportError:
     # Fall back to absolute import (when run standalone)
     from resilience import (
@@ -52,6 +53,7 @@ except ImportError:
     )
     from automated_remediation import run_automated_remediation
     from anomaly_learning import learn_monitor_thresholds
+    from executive_storytelling import generate_daily_ai_summary
 
 __all__ = [
     "SlackNotifier",
@@ -72,4 +74,5 @@ __all__ = [
     "publish_datadog_metrics",
     "run_automated_remediation",
     "learn_monitor_thresholds",
+    "generate_daily_ai_summary",
 ]

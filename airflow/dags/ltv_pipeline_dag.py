@@ -66,10 +66,12 @@ try:
     )
     from utils.automated_remediation import run_automated_remediation
     from utils.anomaly_learning import learn_monitor_thresholds
+    from utils.executive_storytelling import generate_daily_ai_summary
     from config.phase_4_batch_5_observability_config import (
         BATCH_5_DAG_CONFIG,
         OBSERVABILITY_TASK_POLICIES,
     )
+    from config.phase_5_executive_storytelling_config import EXEC_SUMMARY_TASK_POLICY
 except ImportError as e:
     raise ImportError(
         f"Failed to import custom operators/utils. "
@@ -433,7 +435,26 @@ with DAG(
             """,
         )
 
-        collect_snapshot >> [publish_grafana, publish_datadog, automated_remediation, anomaly_learning]
+        generate_ai_summary = PythonOperator(
+            task_id="generate_daily_ai_summary",
+            python_callable=_with_observability_failure_policy(generate_daily_ai_summary),
+            **dict(EXEC_SUMMARY_TASK_POLICY),
+            doc="""
+            Generate AI-supported daily executive narrative from current snapshots.
+
+            - Uses latest observability snapshot and business metrics
+            - Calls LLM endpoint when configured, otherwise uses deterministic template
+            - Writes JSON artifact for Streamlit narrative panel consumption
+            """,
+        )
+
+        collect_snapshot >> [
+            publish_grafana,
+            publish_datadog,
+            automated_remediation,
+            anomaly_learning,
+            generate_ai_summary,
+        ]
 
     # ========================================================================
     # Task Dependencies (Full Execution Chain with Resilience + MC Monitoring)
