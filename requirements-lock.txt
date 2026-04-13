@@ -57,7 +57,7 @@ databricks-cli==0.18.0
     # via -r requirements.txt
 databricks-sdk==0.77.0
     # via dbt-databricks
-databricks-sql-connector[pyarrow]==4.1.3
+databricks-sql-connector[pyarrow]==4.2.5
     # via dbt-databricks
 dbt-adapters==1.22.10
     # via
