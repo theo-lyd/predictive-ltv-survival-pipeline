@@ -159,7 +159,7 @@ lz4==4.4.5
     # via databricks-sql-connector
 markupsafe==3.0.3
     # via jinja2
-marshmallow==3.26.2
+marshmallow==4.3.0
     # via great-expectations
 mashumaro[msgpack]==3.14
     # via
