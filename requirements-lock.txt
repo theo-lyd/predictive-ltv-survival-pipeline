@@ -170,7 +170,7 @@ matplotlib==3.10.8
     # via lifelines
 mistune==3.2.0
     # via great-expectations
-more-itertools==10.8.0
+more-itertools==11.0.2
     # via
     #   dbt-semantic-interfaces
     #   jaraco-classes
