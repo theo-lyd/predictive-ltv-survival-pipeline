@@ -235,7 +235,7 @@ pillow==12.2.0
     #   streamlit
 plotly==6.6.0
     # via -r requirements.txt
-protobuf==6.33.6
+protobuf==7.34.1
     # via
     #   databricks-sdk
     #   dbt-adapters
