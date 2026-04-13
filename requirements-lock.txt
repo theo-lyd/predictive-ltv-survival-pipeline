@@ -108,7 +108,7 @@ great-expectations==1.15.2
     # via -r requirements.txt
 idna==3.11
     # via requests
-importlib-metadata==8.9.0
+importlib-metadata==9.0.0
     # via
     #   dbt-semantic-interfaces
     #   keyring
