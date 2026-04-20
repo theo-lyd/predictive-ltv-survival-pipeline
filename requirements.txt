@@ -1,6 +1,6 @@
 # Core analytics and data tools
 pandas>=2.0.0,<3.0.0
-numpy>=1.24.0,<2.0.0
+numpy>=1.24.0,<3.0.0
 faker>=18.0.0
 
 # Data quality and validation
